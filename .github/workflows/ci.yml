@@ -1,0 +1,60 @@
+name: checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.11-alpine
+        env:
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_USER: sports
+          POSTGRES_DB: sports_easy
+        ports: ['5432:5432']
+        options: --health-cmd 'pg_isready -U sports' --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: pip install -r backend/requirements.txt
+      - run: ruff check backend && ruff format --check backend
+      - run: pytest -q
+      - run: alembic upgrade head && python -m app.cli seed && PYTHONPATH=. python tests/postgres_smoke.py
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+psycopg://sports:ci-only-password@localhost:5432/sports_easy
+      - run: pip-audit -r backend/requirements.txt
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m venv .venv && .venv/bin/pip install -r backend/requirements.txt
+      - run: npm ci && npm run lint && npm run typecheck && npm run build && npm audit --audit-level=high
+        working-directory: web
+      - run: npx playwright install --with-deps chromium && npm run test:e2e
+        working-directory: web
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: web/test-results
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
