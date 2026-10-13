@@ -17,6 +17,7 @@ from .models import (
     Quote,
     Team,
 )
+from .reasons import pick_reason
 
 
 class Filters(BaseModel):
@@ -104,7 +105,24 @@ def publication_row(db, pub, prediction, quote, fixture, book, home, away, compe
         "model_version": prediction.model_id,
         "mode": prediction.mode,
         "quote_basis": "Best matching recorded quote in selected region",
-        "reason": "Within requested price range; ranked by your selected criterion. Estimates are unvalidated.",
+        "analysis": pick_reason(
+            prediction,
+            quote.market,
+            quote.outcome,
+            p,
+            home.name,
+            away.name,
+            prediction.probabilities[quote.market],
+        ),
+        "reason": pick_reason(
+            prediction,
+            quote.market,
+            quote.outcome,
+            p,
+            home.name,
+            away.name,
+            prediction.probabilities[quote.market],
+        )["summary"],
     }
 
 

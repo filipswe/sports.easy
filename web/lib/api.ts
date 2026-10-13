@@ -1,3 +1,4 @@
+import type { PickAnalysis } from "./matchday";
 export type Selection = {
   id: string;
   fixture_id: string;
@@ -29,6 +30,7 @@ export type Selection = {
   mode: string;
   quote_basis: string;
   reason: string;
+  analysis?: PickAnalysis;
   result?: string;
   corrected?: boolean;
 };

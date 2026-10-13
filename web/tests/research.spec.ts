@@ -8,6 +8,15 @@ test("recommended picks, match browsing, own analysis and a persistent parlay", 
     page.getByRole("heading", { name: "Our recommended picks" }),
   ).toBeVisible();
   await expect(page.locator("article.prediction-card")).toHaveCount(5);
+  const kickoffs = await page
+    .locator("article.prediction-card")
+    .evaluateAll((cards) => cards.map((c) => c.getAttribute("data-kickoff")!));
+  expect(kickoffs).toEqual([...kickoffs].sort());
+  expect(Date.parse(kickoffs.at(-1)!) - Date.parse(kickoffs[0])).toBeLessThan(
+    24 * 60 * 60 * 1000,
+  );
+  await page.locator(".card-reason summary").first().click();
+  await expect(page.locator(".card-reason p").first()).not.toBeEmpty();
   await expect(page.locator(".teams img").first()).toBeVisible();
   expect(
     await page
@@ -18,7 +27,10 @@ test("recommended picks, match browsing, own analysis and a persistent parlay", 
   await page
     .getByRole("link", { name: "Explore matches", exact: true })
     .click();
-  await expect(page.locator(".fixture-row")).toHaveCount(12);
+  await expect(page.locator(".fixture-row")).toHaveCount(60);
+  const fixtureTimes = await page.locator(".fixture-row").evaluateAll(rows=>rows.map(row=>row.getAttribute("data-kickoff")!));
+  expect(fixtureTimes).toEqual([...fixtureTimes].sort());
+  // Fixtures interleave five leagues; these three use distinct clubs.
   await page.locator(".fixture-row").nth(0).getByRole("button").first().click();
   await page.locator(".fixture-row").nth(1).getByRole("button").first().click();
   await page.locator(".fixture-row").nth(2).getByRole("button").first().click();
@@ -75,6 +87,12 @@ test("first-half and form markets, search and empty results", async ({
   await expect(page.locator(".insight-card h2")).toHaveText(
     "1st half: Over 0.5 goals",
   );
+  await expect(
+    page.getByRole("region", { name: "Pick explanation" }),
+  ).toContainText("first half");
+  await expect(page.locator(".reason-signals")).toContainText(
+    "First-half expected goals",
+  );
   await page.getByRole("button", { name: "Form & stats" }).click();
   await expect(page.locator(".recent-row")).toHaveCount(10);
   await page.getByRole("button", { name: "Head to head", exact: true }).click();
@@ -88,7 +106,7 @@ test("first-half and form markets, search and empty results", async ({
   await page
     .getByRole("button", { name: "Reset filters", exact: true })
     .click();
-  await expect(page.locator(".fixture-row")).toHaveCount(12);
+  await expect(page.locator(".fixture-row")).toHaveCount(60);
   await page.goto("/admin");
   await expect(page.locator(".notice.error")).toContainText(
     "Sign in to continue",
@@ -194,7 +212,7 @@ test("light desktop and mobile layouts, club logos and navigation", async ({
     fullPage: true,
   });
   await page.goto("/predictions");
-  await expect(page.locator(".fixture-row")).toHaveCount(12);
+  await expect(page.locator(".fixture-row")).toHaveCount(60);
   await page.screenshot({
     path: "test-results/matches-desktop.png",
     fullPage: true,
@@ -218,7 +236,7 @@ test("light desktop and mobile layouts, club logos and navigation", async ({
     if (url === "/")
       await expect(page.locator("article.prediction-card")).toHaveCount(5);
     if (url === "/predictions")
-      await expect(page.locator(".fixture-row")).toHaveCount(12);
+      await expect(page.locator(".fixture-row")).toHaveCount(60);
     if (url === "/parlays")
       await expect(page.locator(".parlay-suggestion").first()).toBeVisible();
     expect(

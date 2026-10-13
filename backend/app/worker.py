@@ -26,7 +26,9 @@ def tick():
                 db.execute(delete(AuthSession).where(AuthSession.expires_at < now()))
                 db.commit()
                 slot = int(now().timestamp()) // max(60, settings.poll_seconds)
-                job = Job(key=f"{settings.app_data_mode}:{VERSION}:{slot}", status="running")
+                job = Job(
+                    key=f"{settings.app_data_mode}:{VERSION}:top5-24h-v2:{slot}", status="running"
+                )
                 db.add(job)
                 try:
                     db.commit()

@@ -251,11 +251,18 @@ def detail(fixture_id: str, db=Depends(get_db)):
         .where(Prediction.fixture_id == f.id)
         .order_by(Prediction.generated_at.desc())
     )
+    competition = db.get(Competition, f.competition_id)
+    history_ids = [
+        c.id
+        for c in db.scalars(select(Competition))
+        if c.mode == f.mode and c.provider_id.split(":")[1] == competition.provider_id.split(":")[1]
+    ]
     history = list(
         db.scalars(
             select(Fixture)
             .where(
                 Fixture.mode == f.mode,
+                Fixture.competition_id.in_(history_ids),
                 Fixture.status == "finished",
                 Fixture.kickoff < (p.input_cutoff if p else now()),
             )

@@ -8,7 +8,7 @@ from sqlalchemy.exc import DBAPIError
 
 assert engine.dialect.name == "postgresql"
 with SessionLocal() as db:
-    assert db.scalar(select(func.count()).select_from(Fixture)) == 276
+    assert db.scalar(select(func.count()).select_from(Fixture)) == 1380
     for cls, table in [(Publication, "publications"), (Recommendation, "recommendations")]:
         record = db.scalar(select(cls))
         assert record

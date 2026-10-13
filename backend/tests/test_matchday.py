@@ -14,7 +14,7 @@ def test_catalog_is_coherent_and_halves_use_recorded_data(client, db):
     response = client.get("/api/matchday")
     assert response.status_code == 200
     items = response.json()["items"]
-    assert len(items) == 12
+    assert len(items) == 60
     assert all(m["home_logo"] and m["away_logo"] for m in items)
     assert {
         p["bookmaker"]
@@ -42,9 +42,12 @@ def test_official_picks_freeze_and_performance_counts_only_them(client, db):
     items = client.get("/api/recommendations").json()["items"]
     assert len(items) == 5
     assert len({p["fixture_id"] for p in items}) == 5
-    assert [p["probability"] for p in items] == sorted(
-        [p["probability"] for p in items], reverse=True
-    )
+    assert [p["kickoff"] for p in items] == sorted(p["kickoff"] for p in items)
+    from datetime import datetime, timedelta
+
+    assert datetime.fromisoformat(items[-1]["kickoff"]) - datetime.fromisoformat(
+        items[0]["kickoff"]
+    ) < timedelta(hours=24)
     performance = client.get("/api/performance").json()
     assert performance["count"] == 5 and performance["settled"] == 0
     assert performance["win_rate"] is None
@@ -157,3 +160,114 @@ def test_suggestions_respect_range_and_do_not_invent_matching_odds(client):
         == []
     )
     assert client.get("/api/parlays/suggestions?min_odds=10&max_odds=2").status_code == 422
+
+
+def test_top_five_leagues_have_separate_histories_and_filters(client, db):
+    from app.leagues import LEAGUES
+
+    meta = client.get("/api/meta").json()
+    assert {league["name"] for league in meta["leagues"]} == {league.name for league in LEAGUES}
+    predictions = list(db.scalars(select(Prediction)))
+    assert len(predictions) == 60
+    assert all(p.factors["league_sample"] == 264 for p in predictions)
+    assert all(p.factors["home_sample"] + p.factors["away_sample"] < 264 for p in predictions)
+    for league in meta["leagues"]:
+        items = client.get("/api/matchday?league=" + league["id"]).json()["items"]
+        assert len(items) == 12
+        assert all(m["competition"] == league["name"] for m in items)
+    # Changing another league's results cannot change this league's prediction.
+    from app.model import predict
+
+    target = db.get(Fixture, predictions[0].fixture_id)
+    history = list(
+        db.scalars(select(Fixture).where(Fixture.competition_id == target.competition_id))
+    )
+    first = predict(history, target.home_id, target.away_id, now())
+    other = db.scalar(
+        select(Fixture).where(
+            Fixture.competition_id != target.competition_id, Fixture.status == "finished"
+        )
+    )
+    other.home_goals = 99
+    second = predict(history, target.home_id, target.away_id, now())
+    assert first["probabilities"] == second["probabilities"]
+
+
+def test_featured_window_excludes_distant_published_picks_without_erasing_them(client, db):
+    from datetime import timedelta
+
+    from app.models import Publication, Quote
+    from app.picks import recommendation_rows
+
+    original = client.get("/api/recommendations").json()["items"]
+    far = db.scalar(
+        select(Fixture).where(Fixture.status == "scheduled").order_by(Fixture.kickoff.desc())
+    )
+    pub = db.scalar(
+        select(Publication)
+        .join(Quote, Publication.quote_id == Quote.id)
+        .where(Quote.fixture_id == far.id)
+    )
+    db.add(Recommendation(fixture_id=far.id, publication_id=pub.id, policy="legacy-weekly"))
+    db.commit()
+    items = client.get("/api/recommendations").json()["items"]
+    assert {r["id"] for r in items} == {r["id"] for r in original}
+    assert far.id not in {r["fixture_id"] for r in items}
+    assert far.id in {r["fixture_id"] for r in recommendation_rows(db)}
+    # Advancing into another matchday picks the next window, preserving original records.
+    at = now() + timedelta(days=2)
+    from unittest.mock import patch
+
+    with patch("app.research.now", return_value=at), patch("app.picks.now", return_value=at):
+        publish_recommendations(db)
+        db.commit()
+        later = recommendation_rows(db, upcoming=True)
+        assert later and all(r["kickoff"] > at for r in later)
+        assert later[-1]["kickoff"] - later[0]["kickoff"] < timedelta(hours=24)
+    assert all(db.get(Recommendation, r["recommendation_id"]) for r in original)
+
+
+def test_all_market_explanations_are_specific_and_do_not_fake_support(client):
+    matches = client.get("/api/matchday").json()["items"]
+    match = matches[0]
+    for market in match["markets"]:
+        for pick in market["picks"]:
+            analysis = pick["analysis"]
+            assert analysis["summary"] and analysis["signals"]
+            assert analysis["model_favors"] == (
+                pick["probability"] >= max(p["probability"] for p in market["picks"]) - 1e-10
+            )
+            if market["group"] == "First half":
+                assert "first half" in analysis["summary"]
+                assert analysis["signals"][0]["label"] == "First-half expected goals"
+            if market["key"] == "btts":
+                assert any(s["label"] == "Chance of not scoring" for s in analysis["signals"])
+    result_market = next(m for m in match["markets"] if m["key"] == "1x2")
+    weak = min(result_market["picks"], key=lambda p: p["probability"])
+    assert not weak["analysis"]["model_favors"]
+    assert "leading result" in weak["analysis"]["summary"]
+    assert {s["label"] for s in weak["analysis"]["signals"]} == {
+        "Expected goals",
+        match["home"] + " · last 5",
+        match["away"] + " · last 5",
+    }
+
+
+def test_live_providers_request_every_top_five_league(db, monkeypatch):
+    from app.config import settings
+    from app.leagues import LEAGUES
+    from app.providers import APIFootball, TheOddsAPI
+
+    monkeypatch.setattr(settings, "api_football_key", "test-only")
+    monkeypatch.setattr(settings, "odds_api_key", "test-only")
+    football = APIFootball(db)
+    calls = []
+    football.client.get = lambda url, params, headers: calls.append(params) or {"response": []}
+    assert football.fixtures() == []
+    assert {c["league"] for c in calls} == {league.id for league in LEAGUES}
+    assert len(calls) == 10
+    odds = TheOddsAPI(db)
+    sports = []
+    odds.client.get = lambda url, params, cost: sports.append(url.split("/")[-2]) or []
+    assert odds.odds() == []
+    assert set(sports) == {league.sport for league in LEAGUES}

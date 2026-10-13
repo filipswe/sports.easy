@@ -1,4 +1,5 @@
 "use client";
+import clubCrests from "@/lib/clubs.json";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -58,20 +59,6 @@ export function Empty({
     </div>
   );
 }
-const clubNames = [
-  "Arsenal",
-  "Chelsea",
-  "Liverpool",
-  "Manchester City",
-  "Newcastle United",
-  "Aston Villa",
-  "Tottenham Hotspur",
-  "Brighton",
-  "Manchester United",
-  "Everton",
-  "Fulham",
-  "Brentford",
-];
 export function TeamBadge({
   name,
   away = false,
@@ -82,9 +69,7 @@ export function TeamBadge({
   src?: string;
 }) {
   const [failed, setFailed] = useState(false);
-  const local = clubNames.includes(name)
-    ? "/clubs/" + name.toLowerCase().replaceAll(" ", "-") + ".png"
-    : undefined;
+  const local = (clubCrests as Record<string, string>)[name];
   return (
     <span className={`team-badge ${away ? "away" : ""}`}>
       {!failed && (src || local) ? (
@@ -170,10 +155,15 @@ export function PredictionCard({
     }
   }
   return (
-    <article className={`prediction-card ${compact ? "compact" : ""}`}>
+    <article
+      className={`prediction-card ${compact ? "compact" : ""}`}
+      data-kickoff={s.kickoff}
+    >
       <div className="card-top">
         <span className="eyebrow">
-          {rank ? `PICK ${String(rank).padStart(2, "0")}` : s.competition}
+          {rank
+            ? `PICK ${String(rank).padStart(2, "0")} · ${s.competition}`
+            : s.competition}
         </span>
         <button
           className="icon-button"
@@ -218,6 +208,12 @@ export function PredictionCard({
           <span style={{ width: pct(s.probability) }} />
         </div>
       </div>
+      {s.analysis && (
+        <details className="card-reason">
+          <summary>Why this pick?</summary>
+          <p>{s.analysis.summary}</p>
+        </details>
+      )}
       <div className="pick-book">
         {s.bookmaker}
         {s.stale && s.mode !== "demo" ? " · Price outdated" : ""}

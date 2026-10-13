@@ -3143,3 +3143,70 @@ footer p {
     scroll-margin-top: 20px;
   }
 }
+.pick-explanation h3 {
+  font-size: 15px;
+  margin: 3px 0 10px;
+  letter-spacing: -0.02em;
+}
+.pick-explanation > p {
+  font-size: 12px;
+  color: #52684c;
+  line-height: 1.85;
+}
+.reason-signals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+.reason-signals > div {
+  border: 1px solid #d5e3cc;
+  background: #ffffff80;
+  border-radius: 7px;
+  padding: 12px;
+}
+.reason-signals span {
+  display: block;
+  font-size: 9px;
+  color: #7a8e70;
+}
+.reason-signals b {
+  font-size: 11px;
+  display: block;
+  margin-top: 5px;
+  line-height: 1.55;
+}
+.card-reason {
+  margin: 0 15px 13px;
+  font-size: 9px;
+  color: #678061;
+}
+.card-reason summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.card-reason p {
+  font-size: 10px;
+  line-height: 1.8;
+  margin: 9px 0 0;
+}
+.card-top .eyebrow {
+  font-size: 8px;
+  letter-spacing: 0.5px;
+}
+.coverage-strip strong {
+  white-space: nowrap;
+}
+@media (max-width: 700px) {
+  .reason-signals {
+    grid-template-columns: 1fr;
+  }
+  .pick-explanation > p {
+    font-size: 11px;
+  }
+  .card-reason {
+    margin-inline: 11px;
+    font-size: 8px;
+  }
+}
+.sort-select{font-size:11px;white-space:nowrap}@media(max-width:700px){.sort-select{font-size:9px}}

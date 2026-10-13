@@ -124,7 +124,7 @@ export function MatchDetail({ id }: { id: string }) {
   }, [id]);
   useEffect(() => {
     const selected = picks.find((p) => p.fixture_id === id);
-    if (selected) setFocus(selected);
+    setFocus(selected || null);
     setSaved(false);
   }, [picks, id]);
   if (error)
@@ -143,7 +143,16 @@ export function MatchDetail({ id }: { id: string }) {
     [...match.markets.flatMap((m) => m.picks)]
       .sort((a, b) => b.probability - a.probability)
       .find((p) => p.market === "1x2") || match.markets[0]?.picks[0];
-  const chosen = focus || (candidate ? withMatch(candidate, match) : null);
+  const currentFocus = focus
+    ? match.markets
+        .flatMap((m) => m.picks)
+        .find((p) => p.market === focus.market && p.outcome === focus.outcome)
+    : null;
+  const chosen = currentFocus
+    ? withMatch(currentFocus, match)
+    : candidate
+      ? withMatch(candidate, match)
+      : null;
   const available = match.markets.filter(
     (m) =>
       group === "All" ||
@@ -239,22 +248,24 @@ export function MatchDetail({ id }: { id: string }) {
                         <span>Chance it loses</span>
                       </div>
                     </div>
-                    <p>
-                      {match.home} won {won(detail.home_stats)} of their last{" "}
-                      {detail.home_stats.recent.length}; {match.away} won{" "}
-                      {won(detail.away_stats)} of their last{" "}
-                      {detail.away_stats.recent.length}.
-                      {h !== undefined && a !== undefined
-                        ? ` The model expects about ${h.toFixed(1)} goals from ${match.home} and ${a.toFixed(1)} from ${match.away}.`
-                        : ""}
-                    </p>
-                    <p className="hint">
-                      {chosen.probability >= 0.7
-                        ? "One of the more likely outcomes in this match, though an upset is still possible."
-                        : chosen.probability >= 0.5
-                          ? "The model gives this a slight edge. There is still a substantial chance it loses."
-                          : "The model considers this less likely than not. Longer odds do not make it more likely to happen."}
-                    </p>
+                    {chosen.analysis && (
+                      <section
+                        className="pick-explanation"
+                        aria-label="Pick explanation"
+                      >
+                        <h3>{chosen.analysis.heading}</h3>
+                        <p>{chosen.analysis.summary}</p>
+                        <div className="reason-signals">
+                          {chosen.analysis.signals.map((signal) => (
+                            <div key={signal.label}>
+                              <span>{signal.label}</span>
+                              <b>{signal.value}</b>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="hint">{chosen.analysis.caution}</p>
+                      </section>
+                    )}
                     {chosen.publication_id &&
                       (user ? (
                         <button

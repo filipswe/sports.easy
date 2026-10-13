@@ -1,3 +1,10 @@
+export type PickAnalysis = {
+  summary: string;
+  heading: string;
+  model_favors: boolean;
+  signals: { label: string; value: string }[];
+  caution: string;
+};
 export type Price = {
   bookmaker: string;
   odds: number;
@@ -9,6 +16,7 @@ export type Pick = {
   market: string;
   outcome: string;
   probability: number;
+  analysis?: PickAnalysis;
   odds: number | null;
   bookmaker: string | null;
   stale: boolean;

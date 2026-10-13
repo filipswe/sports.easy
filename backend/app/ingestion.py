@@ -5,6 +5,7 @@ from sqlalchemy import select
 
 from .config import settings
 from .db import now, utc
+from .leagues import BY_SPORT, LEAGUES
 from .model import VERSION, outcome_won, predict
 from .models import (
     Bookmaker,
@@ -51,11 +52,14 @@ def ensure_model(db):
 def upsert_fixtures(db, records, mode, fetched):
     prefix = "demo" if mode == "demo" else "api-football"
     for item in records:
-        comp_key = f"{prefix}:{settings.league_id}:{item['season']}"
+        comp_key = f"{prefix}:{item.get('league_id', settings.league_id)}:{item['season']}"
         comp = db.scalar(select(Competition).where(Competition.provider_id == comp_key))
         if not comp:
             comp = Competition(
-                provider_id=comp_key, name=settings.league_name, season=item["season"], mode=mode
+                provider_id=comp_key,
+                name=item.get("league_name", settings.league_name),
+                season=item["season"],
+                mode=mode,
             )
             db.add(comp)
             db.flush()
@@ -100,10 +104,18 @@ def ingest(db):
         existing = db.scalar(
             select(Fixture).where(Fixture.mode == "demo").order_by(Fixture.kickoff)
         )
-        if existing and db.scalar(
-            select(Prediction.id)
-            .where(Prediction.mode == "demo", Prediction.model_id == VERSION)
-            .limit(1)
+        coverage = {
+            c.provider_id.split(":")[1]
+            for c in db.scalars(select(Competition).where(Competition.mode == "demo"))
+        }
+        if (
+            existing
+            and coverage >= {str(league.id) for league in LEAGUES}
+            and db.scalar(
+                select(Prediction.id)
+                .where(Prediction.mode == "demo", Prediction.model_id == VERSION)
+                .limit(1)
+            )
         ):
             from .picks import publish_recommendations
 
@@ -112,7 +124,7 @@ def ingest(db):
             db.commit()
             return {"status": "unchanged", "message": "Demo anchor and source ages preserved"}
         anchor = utc(existing.kickoff) + timedelta(days=280) if existing else fetched
-        records = DemoFootball(anchor).fixtures()
+        records = [f for league in LEAGUES for f in DemoFootball(anchor, league.id).fixtures()]
         events = DemoOdds(records, anchor).odds()
     else:
         if not settings.live_retention_approved:
@@ -124,14 +136,20 @@ def ingest(db):
     upsert_fixtures(db, records, mode, fetched)
     db.commit()
     fixtures = list(db.scalars(select(Fixture).where(Fixture.mode == mode)))
-    history = [f for f in fixtures if f.status == "finished"]
+    competitions = {c.id: c.provider_id.split(":")[1] for c in db.scalars(select(Competition))}
+    histories = {}
+    for f in fixtures:
+        if f.status == "finished":
+            histories.setdefault(competitions[f.competition_id], []).append(f)
+    strength_cache = {}
     cutoff = now()
     for fixture in fixtures:
         if fixture.status != "scheduled" or utc(fixture.kickoff) <= fetched:
             continue
+        league_history = histories.get(competitions[fixture.competition_id], [])
         hsh = fingerprint(
             [
-                [(f.id, f.home_goals, f.away_goals, f.result_available_at) for f in history],
+                [(f.id, f.home_goals, f.away_goals, f.result_available_at) for f in league_history],
                 fixture.kickoff,
                 fetched.date(),
                 VERSION,
@@ -143,7 +161,9 @@ def ingest(db):
             )
         ):
             continue
-        prediction = predict(history, fixture.home_id, fixture.away_id, cutoff)
+        prediction = predict(
+            league_history, fixture.home_id, fixture.away_id, cutoff, strength_cache=strength_cache
+        )
         if prediction:
             if mode == "demo":
                 prediction["quality"] = "Limited"
@@ -152,7 +172,7 @@ def ingest(db):
                     fixture_id=fixture.id,
                     model_id=VERSION,
                     input_cutoff=cutoff,
-                    history_fetched_at=max(utc(f.fetched_at) for f in history),
+                    history_fetched_at=max(utc(f.fetched_at) for f in league_history),
                     fixture_kickoff=fixture.kickoff,
                     mode=mode,
                     input_hash=hsh,
@@ -182,7 +202,11 @@ def ingest(db):
     }
     rejected = 0
     for event in events:
-        fixture = match_fixture(event, fixtures, names, aliases)
+        league = BY_SPORT.get(event.get("sport_key"))
+        candidates = [
+            f for f in fixtures if league and competitions[f.competition_id] == str(league.id)
+        ]
+        fixture = match_fixture(event, candidates, names, aliases)
         if not fixture or fixture.status != "scheduled" or utc(fixture.kickoff) <= now():
             rejected += 1
             continue

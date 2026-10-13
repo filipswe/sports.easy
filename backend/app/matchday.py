@@ -9,26 +9,13 @@ from sqlalchemy import select
 
 from .config import settings
 from .db import get_db, now, utc
+from .leagues import BY_ID, CLUBS
 from .models import Competition, Fixture, Prediction, Team
 from .picks import recommendation_rows
+from .reasons import pick_reason
 from .research import all_rows, require_fixture
 
 router = APIRouter(prefix="/api", tags=["matchday"])
-
-CLUBS = {
-    "Arsenal": "arsenal",
-    "Chelsea": "chelsea",
-    "Liverpool": "liverpool",
-    "Manchester City": "manchester-city",
-    "Newcastle United": "newcastle-united",
-    "Aston Villa": "aston-villa",
-    "Tottenham Hotspur": "tottenham-hotspur",
-    "Brighton": "brighton",
-    "Manchester United": "manchester-united",
-    "Everton": "everton",
-    "Fulham": "fulham",
-    "Brentford": "brentford",
-}
 
 
 def logo(team):
@@ -134,7 +121,8 @@ def match_row(db, f, quotes, include_markets=True):
     catalog = markets(prediction) if include_markets else []
     for market in catalog:
         market["picks"] = []
-        for outcome, probability in market.pop("outcomes").items():
+        alternatives = market.pop("outcomes")
+        for outcome, probability in alternatives.items():
             prices = [
                 q
                 for q in quotes
@@ -150,6 +138,15 @@ def match_row(db, f, quotes, include_markets=True):
                     "market": market["key"],
                     "outcome": outcome,
                     "probability": probability,
+                    "analysis": pick_reason(
+                        prediction,
+                        market["key"],
+                        outcome,
+                        probability,
+                        home.name,
+                        away.name,
+                        alternatives,
+                    ),
                     "odds": best["odds"] if best else None,
                     "bookmaker": best["bookmaker"] if best else None,
                     "stale": best["stale"] if best else False,
@@ -196,10 +193,17 @@ def matchday(
         if period != "week"
         else at + timedelta(days=7)
     )
+    allowed = [
+        c.id
+        for c in db.scalars(select(Competition))
+        if c.mode == settings.app_data_mode
+        and c.provider_id.split(":")[1] in {str(i) for i in BY_ID}
+    ]
     query = (
         select(Fixture)
         .where(
             Fixture.mode == settings.app_data_mode,
+            Fixture.competition_id.in_(allowed),
             Fixture.status == "scheduled",
             Fixture.kickoff >= start,
             Fixture.kickoff < end,
@@ -223,7 +227,12 @@ def match_markets(fixture_id: str, db=Depends(get_db)):
 
 @router.get("/recommendations")
 def recommendations(db=Depends(get_db)):
-    return {"items": recommendation_rows(db, upcoming=True), "mode": settings.app_data_mode}
+    return {
+        "items": recommendation_rows(db, upcoming=True),
+        "mode": settings.app_data_mode,
+        "window_hours": 24,
+        "order": "kickoff",
+    }
 
 
 class Leg(BaseModel):

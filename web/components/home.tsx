@@ -89,7 +89,7 @@ export function Home() {
                   </div>
                 </div>
                 <div className="hero-match-footer">
-                  <span>Top pick, backed by the numbers</span>
+                  <span>First kickoff in our shortlist</span>
                   <strong>
                     {pct(top.probability)}
                     <small>model chance</small>
@@ -111,7 +111,7 @@ export function Home() {
       <div className="coverage-strip">
         <div className="container">
           <span>ON THE PITCH</span>
-          <strong>⚽ {meta?.leagues[0]?.name || "Football"}</strong>
+          <strong>⚽ Europe’s top five leagues</strong>
           <span className="strip-divider" />
           <span>1X2</span>
           <span>Both teams to score</span>
@@ -127,7 +127,10 @@ export function Home() {
               <Sparkles size={14} /> THE SHORTLIST
             </div>
             <h2>Our recommended picks</h2>
-            <p>Our highest estimated chances, one pick per match.</p>
+            <p>
+              Top model picks for the next 24-hour matchday window, in kickoff
+              order.
+            </p>
           </div>
           <Link className="text-link" href="/performance">
             See our record <ArrowRight size={17} />

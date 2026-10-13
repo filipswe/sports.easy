@@ -7,7 +7,7 @@ from sqlalchemy import select
 from .config import settings
 from .db import utc
 from .model import VERSION, outcome_won, predict
-from .models import EvaluationRun, Fixture
+from .models import Competition, EvaluationRun, Fixture
 
 
 def metrics(observations):
@@ -49,6 +49,7 @@ def evaluate(db):
             .order_by(Fixture.kickoff)
         )
     )
+    leagues = {c.id: c.provider_id.split(":")[1] for c in db.scalars(select(Competition))}
     n = len(matches)
     train_end, validation_end = int(n * 0.6), int(n * 0.8)
     reports = {}
@@ -62,13 +63,16 @@ def evaluate(db):
         for i in range(start, end):
             f = matches[i]
             cutoff = utc(f.kickoff)
-            result = predict(matches[:i], f.home_id, f.away_id, cutoff)
+            league_history = [
+                x for x in matches[:i] if leagues[x.competition_id] == leagues[f.competition_id]
+            ]
+            result = predict(league_history, f.home_id, f.away_id, cutoff)
             if not result:
                 continue
             predicted_matches += 1
             past = [
                 x
-                for x in matches[:i]
+                for x in league_history
                 if x.result_available_at and utc(x.result_available_at) < cutoff
             ]
             for market, outcomes in result["probabilities"].items():
@@ -91,7 +95,7 @@ def evaluate(db):
         "kind": "synthetic demonstration"
         if settings.app_data_mode == "demo"
         else "chronological backtest",
-        "league": settings.league_name,
+        "league": "Top five European leagues · separate league fits",
         "history_count": n,
         "split": "60% initial train / 20% validation / 20% test",
         "method": "Expanding past-only training; fixed hyperparameters; no fitted calibration. Binary outcome-averaged scores.",

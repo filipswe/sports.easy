@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Search,
-  SlidersHorizontal,
+  Clock3,
   ChevronRight,
   Check,
   CalendarDays,
@@ -58,7 +58,6 @@ export function MatchBrowser() {
   const [input, setInput] = useState(search),
     [matches, setMatches] = useState<MatchRow[] | null>(null),
     [error, setError] = useState("");
-  const [sort, setSort] = useState("kickoff");
   function update(key: string, value: string) {
     const q = new URLSearchParams(params);
     if (value) q.set(key, value);
@@ -85,24 +84,7 @@ export function MatchBrowser() {
       active = false;
     };
   }, [period, search, league]);
-  const list = matches
-    ? [...matches].sort((a, b) =>
-        sort === "probability"
-          ? Math.max(
-              0,
-              ...(b.markets
-                .find((m) => m.key === market)
-                ?.picks.map((p) => p.probability) || []),
-            ) -
-            Math.max(
-              0,
-              ...(a.markets
-                .find((m) => m.key === market)
-                ?.picks.map((p) => p.probability) || []),
-            )
-          : Date.parse(a.kickoff) - Date.parse(b.kickoff),
-      )
-    : [];
+  const list = matches ? [...matches].sort((a,b)=>Date.parse(a.kickoff)-Date.parse(b.kickoff)) : [];
   return (
     <div className="container section app-page">
       <div className="page-heading">
@@ -166,17 +148,7 @@ export function MatchBrowser() {
                 </button>
               ))}
             </div>
-            <label className="sort-select">
-              <SlidersHorizontal size={15} />
-              <select
-                aria-label="Sort matches"
-                value={sort}
-                onChange={(e) => setSort(e.target.value)}
-              >
-                <option value="kickoff">Kickoff time</option>
-                <option value="probability">Model chance</option>
-              </select>
-            </label>
+            <span className="sort-select"><Clock3 size={15}/>Kickoff order</span>
           </div>
           <div className="market-tabs" aria-label="Markets">
             {[
@@ -240,7 +212,7 @@ export function MatchBrowser() {
                         </span>
                       </div>
                     )}
-                    <article className="fixture-row">
+                    <article className="fixture-row" data-kickoff={m.kickoff}>
                       <div className="fixture-time">
                         {new Date(m.kickoff).toLocaleTimeString("en-GB", {
                           hour: "2-digit",

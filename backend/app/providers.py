@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 
 from .config import settings
 from .db import now, utc
+from .leagues import BY_ID, BY_SPORT, LEAGUES
 from .models import IngestionRun
 
 
@@ -100,10 +101,16 @@ class APIFootball:
         if not settings.api_football_key:
             raise ProviderUnavailable("API_FOOTBALL_KEY is missing; live fixtures unavailable")
         result = []
+        for league in LEAGUES:
+            result.extend(self.league_fixtures(league))
+        return result
+
+    def league_fixtures(self, league):
+        result = []
         for season in [settings.season - 1, settings.season]:
             data = self.client.get(
                 "https://v3.football.api-sports.io/fixtures",
-                {"league": settings.league_id, "season": season},
+                {"league": league.id, "season": season},
                 {"x-apisports-key": settings.api_football_key},
             )
             if data.get("paging", {}).get("total", 1) > 1:
@@ -132,6 +139,8 @@ class APIFootball:
                         "away_goals": item.get("score", {}).get("fulltime", {}).get("away"),
                         "home_half_goals": item.get("score", {}).get("halftime", {}).get("home"),
                         "away_half_goals": item.get("score", {}).get("halftime", {}).get("away"),
+                        "league_id": league.id,
+                        "league_name": league.name,
                         "season": season,
                     }
                 )
@@ -145,18 +154,23 @@ class TheOddsAPI:
     def odds(self):
         if not settings.odds_api_key:
             raise ProviderUnavailable("ODDS_API_KEY is missing; live quotes unavailable")
-        return self.client.get(
-            f"https://api.the-odds-api.com/v4/sports/{settings.odds_sport}/odds",
-            {
-                "apiKey": settings.odds_api_key,
-                "regions": settings.odds_region,
-                "bookmakers": settings.odds_bookmaker_key,
-                "markets": "h2h,totals",
-                "oddsFormat": "decimal",
-                "dateFormat": "iso",
-            },
-            cost=2,
-        )
+        events = []
+        for league in LEAGUES:
+            events.extend(
+                self.client.get(
+                    f"https://api.the-odds-api.com/v4/sports/{league.sport}/odds",
+                    {
+                        "apiKey": settings.odds_api_key,
+                        "regions": settings.odds_region,
+                        "bookmakers": settings.odds_bookmaker_key,
+                        "markets": "h2h,totals",
+                        "oddsFormat": "decimal",
+                        "dateFormat": "iso",
+                    },
+                    cost=2,
+                )
+            )
+        return events
 
 
 TEAM_NAMES = [
@@ -178,41 +192,56 @@ TEAM_NAMES = [
 class DemoFootball:
     """Seeded synthetic matches, anchored once on first ingestion. Never genuine history."""
 
-    def __init__(self, anchor):
+    def __init__(self, anchor, league_id=39):
         self.anchor = anchor
+        self.league = BY_ID[league_id]
 
     def fixtures(self):
-        rng = random.Random(1947)
+        league = self.league
+        names = [name for name, _ in league.clubs]
+        # Preserve all existing English IDs and results; other leagues have distinct IDs/seeds.
+        suffix = "" if league.id == 39 else f"{league.id}-"
+        team_offset = 0 if league.id == 39 else league.id * 100
+        rng = random.Random(1947 if league.id == 39 else 1947 + league.id)
         result = []
         for i in range(264):
             h = i % 12
             a = (h + 1 + (i // 12) % 11) % 12
             result.append(
                 {
-                    "id": f"history-{i}",
-                    "home": {"id": h, "name": TEAM_NAMES[h]},
-                    "away": {"id": a, "name": TEAM_NAMES[a]},
+                    "id": f"{suffix}history-{i}",
+                    "home": {"id": team_offset + h, "name": names[h]},
+                    "away": {"id": team_offset + a, "name": names[a]},
                     "kickoff": self.anchor - timedelta(days=280 - i),
                     "status": "finished",
                     "venue": None,
                     "home_goals": rng.choices(range(5), [15, 35, 28, 16, 6])[0],
                     "away_goals": rng.choices(range(5), [28, 35, 23, 10, 4])[0],
                     "season": self.anchor.year,
+                    "league_id": league.id,
+                    "league_name": league.name,
                 }
             )
         for i in range(12):
             h, a = i, (i + 5) % 12
             result.append(
                 {
-                    "id": f"upcoming-{i}",
-                    "home": {"id": h, "name": TEAM_NAMES[h]},
-                    "away": {"id": a, "name": TEAM_NAMES[a]},
-                    "kickoff": self.anchor + timedelta(hours=4 + i * 11),
+                    "id": f"{suffix}upcoming-{i}",
+                    "home": {"id": team_offset + h, "name": names[h]},
+                    "away": {"id": team_offset + a, "name": names[a]},
+                    "kickoff": self.anchor
+                    + timedelta(
+                        hours=4
+                        + i * 11
+                        + (0 if league.id == 39 else list(BY_ID).index(league.id) * 0.75)
+                    ),
                     "status": "scheduled",
                     "venue": "Demo stadium",
                     "home_goals": None,
                     "away_goals": None,
                     "season": self.anchor.year,
+                    "league_id": league.id,
+                    "league_name": league.name,
                 }
             )
         for f in result:
@@ -277,7 +306,7 @@ class DemoOdds:
             events.append(
                 {
                     "id": f["id"],
-                    "sport_key": settings.odds_sport,
+                    "sport_key": BY_ID[f.get("league_id", 39)].sport,
                     "home_team": f["home"]["name"],
                     "away_team": f["away"]["name"],
                     "commence_time": f["kickoff"].isoformat(),
@@ -294,7 +323,8 @@ def match_fixture(event, fixtures, names, aliases):
         return aliases.get(name.casefold()) or names.get(name.casefold())
 
     home, away = identify(event["home_team"]), identify(event["away_team"])
-    if not home or not away or event.get("sport_key") != settings.odds_sport:
+    league = BY_SPORT.get(event.get("sport_key"))
+    if not home or not away or league is None:
         return None
     kickoff = parse_time(event["commence_time"])
     candidates = [
