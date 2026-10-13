@@ -104,7 +104,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             {meta?.mode === "demo"
               ? "Sample data · Live feed not connected"
               : meta
-                ? meta.feed_notice || "Pre-match insights"
+                ? "Current odds"
                 : failed
                   ? "Data service unavailable"
                   : "Connecting…"}

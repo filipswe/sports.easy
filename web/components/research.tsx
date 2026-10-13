@@ -353,7 +353,7 @@ export function Research({ builder = false }: { builder?: boolean }) {
             </label>
           </fieldset>
           <fieldset>
-            <legend>Model & freshness</legend>
+            <legend>Model filters</legend>
             <label>
               Minimum estimated probability{" "}
               <span className="green">
@@ -376,18 +376,6 @@ export function Research({ builder = false }: { builder?: boolean }) {
               />
               Positive estimated EV only
             </label>
-            <label className="checkbox">
-              <input
-                type="checkbox"
-                checked={form.fresh_only}
-                onChange={(e) => update("fresh_only", e.target.checked)}
-              />
-              Fresh quotes only
-            </label>
-            <p className="hint">
-              Source age ≤ {meta ? meta.freshness_seconds / 60 : 10} minutes.
-              Stale quotes never enter current-EV rankings.
-            </p>
           </fieldset>
           <label>
             Rank results by
@@ -399,7 +387,6 @@ export function Research({ builder = false }: { builder?: boolean }) {
               <option value="probability">Highest estimated probability</option>
               <option value="ev">Highest estimated EV</option>
               <option value="odds">Highest odds</option>
-              <option value="freshness">Freshest source update</option>
             </select>
           </label>
           <button className="button primary full" disabled={busy} type="submit">

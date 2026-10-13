@@ -219,12 +219,8 @@ export function Parlays() {
                         </button>
                       </div>
                       <p className="fine-print">
-                        {p.mode === "demo" ? "Sample prices" : "Recorded odds"}
-                        {p.mode !== "demo" &&
-                        p.prices.some((price) => price.stale)
-                          ? " · Prices outdated"
-                          : ""}{" "}
-                        · Assumes independent matches. All picks must win.
+                        {p.mode === "demo" ? "Sample prices" : "Current odds"} ·
+                        Assumes independent matches. All picks must win.
                       </p>
                     </article>
                   ))}

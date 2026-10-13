@@ -255,7 +255,7 @@ export function MatchDetail({ id }: { id: string }) {
                         <span>
                           {match.mode === "demo"
                             ? "Sample odds"
-                            : "Recorded odds"}
+                            : "Current odds"}
                         </span>
                       </div>
                       <div>
@@ -329,7 +329,10 @@ export function MatchDetail({ id }: { id: string }) {
                   <section className="panel market-panel" key={m.key}>
                     <div className="section-heading">
                       <h3>{m.name}</h3>
-                      <span className="hint">Odds / model chance</span>
+                      <span className="hint">
+                        {match.mode === "demo" ? "Sample odds" : "Current odds"}{" "}
+                        / model chance
+                      </span>
                     </div>
                     {m.picks.length ? (
                       <div
@@ -436,10 +439,7 @@ export function MatchDetail({ id }: { id: string }) {
               First-half estimates use a separate fit to recorded half-time
               scores. Injury and lineup information is not included.
             </p>
-            <p>
-              Model: {detail.prediction?.model_version || "Unavailable"} ·
-              Updated {stamp(detail.prediction?.generated_at || null)}
-            </p>
+            <p>Model: {detail.prediction?.model_version || "Unavailable"}</p>
           </details>
         </div>
         <ParlayPanel />

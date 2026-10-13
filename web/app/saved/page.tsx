@@ -63,11 +63,11 @@ export default function Page() {
                   Remove
                 </button>
               </div>
-              <PredictionCard s={s.original} />
+              <PredictionCard s={s.original} oddsLabel="Saved odds" />
               <p className="saved-comparison">
-                Current recorded values:{" "}
+                Current odds:{" "}
                 {s.current
-                  ? `${s.current.odds.toFixed(2)} decimal · ${pct(s.current.probability)} probability${s.current.stale ? " · Stale quote" : ""}`
+                  ? `${s.current.odds.toFixed(2)} decimal · ${pct(s.current.probability)} model chance`
                   : "Not available"}
               </p>
             </div>

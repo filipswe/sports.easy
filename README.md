@@ -2,7 +2,7 @@
 
 **Betting made easy.** A football match centre with a bright interface, recommended picks, match analysis and a parlay builder.
 
-New installations start with labelled sample data. The [free live setup](docs/live-setup.md) combines football-data.org fixtures/results with Pinnacle prices from The Odds API, with once-daily refreshes and clear price-age labels. Probabilities are model estimates, and no profitable track record is claimed.
+New installations start with labelled sample data. The [free live setup](docs/live-setup.md) combines football-data.org fixtures/results with Pinnacle prices from The Odds API. The public interface labels these **Current odds**; the free feed refreshes daily and price-age checks remain on the server. Probabilities are model estimates, and no profitable track record is claimed.
 
 ## What works
 

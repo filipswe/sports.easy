@@ -175,11 +175,10 @@ export function ParlayPanel({ full = false }: { full?: boolean }) {
               <p>
                 {analysis.mode === "demo"
                   ? "Sample prices"
-                  : analysis.odds_basis}
-                {analysis.prices.some((p) => p.stale) &&
-                analysis.mode !== "demo"
-                  ? " · Prices outdated"
-                  : ""}
+                  : analysis.odds_basis === "Your entered prices" ||
+                      !analysis.combined_odds
+                    ? analysis.odds_basis
+                    : `Current odds · ${analysis.odds_basis}`}
                 . {analysis.approximation}
               </p>
             )}

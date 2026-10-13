@@ -119,10 +119,12 @@ export function PredictionCard({
   s,
   compact = false,
   rank,
+  oddsLabel = "Current odds",
 }: {
   s: Selection;
   compact?: boolean;
   rank?: number;
+  oddsLabel?: string;
 }) {
   const { user } = useApp(),
     router = useRouter();
@@ -194,9 +196,7 @@ export function PredictionCard({
         </div>
         <div className="price">
           <strong>{s.odds.toFixed(2)}</strong>
-          <small>
-            {s.mode === "demo" ? "Sample odds" : s.stale ? "Last odds" : "Odds"}
-          </small>
+          <small>{s.mode === "demo" ? "Sample odds" : oddsLabel}</small>
         </div>
       </div>
       <div className="probability">
@@ -214,10 +214,7 @@ export function PredictionCard({
           <p>{s.analysis.summary}</p>
         </details>
       )}
-      <div className="pick-book">
-        {s.bookmaker}
-        {s.stale && s.mode !== "demo" ? " · Price outdated" : ""}
-      </div>
+      <div className="pick-book">{s.bookmaker}</div>
       <div className="card-bottom">
         <Link href={"/matches/" + s.fixture_id}>
           Analysis <ArrowUpRight size={14} />

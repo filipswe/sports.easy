@@ -84,7 +84,9 @@ export function MatchBrowser() {
       active = false;
     };
   }, [period, search, league]);
-  const list = matches ? [...matches].sort((a,b)=>Date.parse(a.kickoff)-Date.parse(b.kickoff)) : [];
+  const list = matches
+    ? [...matches].sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff))
+    : [];
   return (
     <div className="container section app-page">
       <div className="page-heading">
@@ -148,7 +150,10 @@ export function MatchBrowser() {
                 </button>
               ))}
             </div>
-            <span className="sort-select"><Clock3 size={15}/>Kickoff order</span>
+            <span className="sort-select">
+              <Clock3 size={15} />
+              Kickoff order
+            </span>
           </div>
           <div className="market-tabs" aria-label="Markets">
             {[
@@ -173,7 +178,10 @@ export function MatchBrowser() {
                 ? `${matches.length} upcoming matches`
                 : "Loading matches…"}
             </span>
-            <span>Decimal odds · Model chance %</span>
+            <span>
+              {meta?.mode === "demo" ? "Sample odds" : "Current odds"} · Model
+              chance %
+            </span>
           </div>
           {error ? (
             <ErrorBox message={error} />
