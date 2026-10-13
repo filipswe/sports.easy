@@ -271,3 +271,26 @@ def test_live_providers_request_every_top_five_league(db, monkeypatch):
     odds.client.get = lambda url, params, cost: sports.append(url.split("/")[-2]) or []
     assert odds.odds() == []
     assert set(sports) == {league.sport for league in LEAGUES}
+
+
+def test_worker_refills_featured_vacancies_without_another_ingestion_job(db, monkeypatch):
+    from app import worker
+    from app.models import Job
+    from app.picks import recommendation_rows
+    from sqlalchemy import func
+    from sqlalchemy.orm import sessionmaker
+
+    monkeypatch.setattr(worker, "engine", db.bind)
+    monkeypatch.setattr(worker, "SessionLocal", sessionmaker(bind=db.bind, expire_on_commit=False))
+    worker.tick()
+    count = db.scalar(select(func.count()).select_from(Job))
+    before = recommendation_rows(db, upcoming=True)
+    for row in before:
+        db.get(Fixture, row["fixture_id"]).status = "postponed"
+    db.commit()
+    worker.tick()
+    after = recommendation_rows(db, upcoming=True)
+    assert len(after) == 5
+    assert not {r["fixture_id"] for r in before} & {r["fixture_id"] for r in after}
+    assert db.scalar(select(func.count()).select_from(Job)) == count
+    assert all(db.get(Recommendation, r["recommendation_id"]) for r in before)

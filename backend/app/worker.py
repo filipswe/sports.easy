@@ -11,6 +11,7 @@ from .db import SessionLocal, engine, now
 from .ingestion import ingest
 from .model import VERSION
 from .models import AuthSession, AuthToken, Job
+from .picks import publish_recommendations
 from .providers import ProviderUnavailable
 
 
@@ -34,6 +35,9 @@ def tick():
                     db.commit()
                 except IntegrityError:
                     db.rollback()
+                    # Refresh the near-term shortlist every tick without another provider request.
+                    publish_recommendations(db)
+                    db.commit()
                     return
                 # A previous running job after obtaining the exclusive lock was interrupted.
                 for old in db.scalars(select(Job).where(Job.status == "running", Job.id != job.id)):

@@ -29,4 +29,4 @@ Open `http://localhost:3000`; the updated Docker application is running. Future 
 
 ## Latest matchday update
 
-The five-league implementation is in commit `ee22b3a`. Local checks passed: 56 backend tests, five browser workflows (including kickoff-order assertions and first-half explanation checks), Ruff, ESLint, TypeScript and production/Docker builds. The remote run is tracked in GitHub Actions. All live-provider checks remain mocked until credentials are configured.
+The five-league implementation is in commit `ee22b3a`. Local checks passed: 56 backend tests, five browser workflows (including kickoff-order assertions and first-half explanation checks), Ruff, ESLint, TypeScript and production/Docker builds. All GitHub checks passed for implementation commit `ee22b3a`. A subsequent 11-test matchday run passed, including a new worker-refill regression, bringing the test catalog to 57 cases. The worker now refreshes shortlist vacancies between ingestion jobs without creating another ingestion job or erasing original recommendations. All live-provider checks remain mocked until credentials are configured.
