@@ -150,6 +150,8 @@ def test_suggestions_respect_range_and_do_not_invent_matching_odds(client):
         assert item["combined_odds"] == pytest.approx(
             math.prod(leg["odds"] for leg in item["legs"])
         )
+    high = client.get("/api/parlays/suggestions?legs=3&min_odds=50&max_odds=150").json()["items"]
+    assert high and all(50 <= p["combined_odds"] <= 150 for p in high)
     assert (
         client.get("/api/parlays/suggestions?legs=2&min_odds=900&max_odds=950").json()["items"]
         == []

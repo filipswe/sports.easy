@@ -330,7 +330,7 @@ def suggestions(
     if min_odds > max_odds:
         raise HTTPException(422, "Minimum odds must be below maximum odds.")
     rows = [r for r in current_quotes(db) if r["mode"] == "demo" or not r["stale"]]
-    # Search up to 18 earliest fixtures and 3 strongest priced outcomes per bookmaker/fixture.
+    # Search up to 18 earliest fixtures and all priced outcomes per bookmaker/fixture.
     fixture_ids = list(
         dict.fromkeys(r["fixture_id"] for r in sorted(rows, key=lambda r: r["kickoff"]))
     )[:18]
@@ -344,7 +344,7 @@ def suggestions(
                 [r for r in rows if r["fixture_id"] == i and r["bookmaker"] == book],
                 key=lambda r: -r["probability"],
             )
-            groups[i] = options[:3]
+            groups[i] = options
         # Bounded beam keeps the highest estimated chances in price buckets, avoiding exponential search.
         beam = [([], 1.0, 1.0, set())]
         for _ in range(legs):
