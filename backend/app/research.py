@@ -68,6 +68,17 @@ def quote_stale(quote, at=None):
     )
 
 
+def recorded_price_usable(row):
+    """Daily free feeds can use recorded prices while retaining their outdated label."""
+    if row["mode"] == "demo" or not row["stale"]:
+        return True
+    return (
+        settings.poll_seconds >= 86400
+        and row["source_updated_at"] is not None
+        and 0 <= (now() - utc(row["fetched_at"])).total_seconds() <= 86400
+    )
+
+
 def publication_row(db, pub, prediction, quote, fixture, book, home, away, competition):
     p = prediction.probabilities[quote.market][quote.outcome]
     stale = quote_stale(quote)

@@ -17,13 +17,15 @@ Free settings use `POLL_SECONDS=86400`, an odds daily budget of 12 and a UTC cal
 
 Football requests reserve 10 calls for two seasons across five leagues; the adapter caps itself at ten requests per minute. No current-season access is assumed from a valid key. Earlier history can be unavailable on an account, so the model needs sufficient accessible results before offering a pick.
 
-Prices age from the bookmaker's source update time, not fetch time, and become outdated after 600 seconds. Previously published recommendations keep their original recorded prices and an outdated-price label. Fresh-price suggestions and new publications require fresh quotes. There is no continuous live-price claim. Provider update cadence is not hardcoded as a guarantee.
+Prices age from the bookmaker's source update time, not fetch time, and become outdated after 600 seconds. Daily-feed recommendations and parlay suggestions can use real snapshots fetched within 24 hours, with an explicit outdated-price label. Faster feeds require fresh quotes. Current-value and positive-EV filters always exclude stale prices. Stronger picks arriving through new coverage can enter the shortlist; earlier publications, prices and probabilities remain unchanged in Performance. There is no continuous live-price claim or hardcoded guarantee about upstream update cadence.
 
 Fixed hosts, 15-second timeouts, up to three attempts and backoff apply. A 429 stops that job. PostgreSQL advisory locking and scheduling buckets prevent overlapping jobs. Changing the football provider uses a separate job key. Sanitized request status/quota and unmatched-event counts remain available to administrators.
 
 ## Source identity, history and display
 
 The internal five-league catalog maps API-Football IDs 39/140/135/78/61 to football-data.org PL/PD/SA/BL1/FL1 and The Odds API sport keys. Source team/fixture IDs are namespaced, preserving demo records and avoiding accidental identity reuse. Only exact canonical names or reviewed provider aliases match prices, with a 15-minute kickoff tolerance, competition and home/away direction checks. Unknown or ambiguous matches are rejected rather than guessed.
+
+The initial Pinnacle sweep exposed 39 club-name differences. `backend/app/team_aliases.py` records those exact names against club IDs checked using the football-data.org current-season team endpoints. Installation requires that source identity to exist and refuses to overwrite a conflicting mapping. New names remain unmatched until reviewed. Importing an already fetched odds snapshot after review preserves its original source and fetch timestamps and consumes no additional provider credits.
 
 Imported past results become available at first observation, preventing a bulk import from pretending to support an earlier backtest. Only verified regulation results train/settle markets; extra-time totals and unconfirmed kickoff times are excluded. First-half estimates use recorded halftime results separately. The baseline remains unvalidated until real out-of-sample records support stronger claims.
 

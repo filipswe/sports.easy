@@ -294,3 +294,57 @@ def test_worker_refills_featured_vacancies_without_another_ingestion_job(db, mon
     assert not {r["fixture_id"] for r in before} & {r["fixture_id"] for r in after}
     assert db.scalar(select(func.count()).select_from(Job)) == count
     assert all(db.get(Recommendation, r["recommendation_id"]) for r in before)
+
+
+def test_stronger_new_pick_enters_shortlist_without_rewriting_old_records(db):
+    import copy
+
+    from app.models import Publication, Quote
+    from app.picks import featured_window, publish_recommendations, recommendation_rows
+
+    before = recommendation_rows(db, upcoming=True)
+    recorded_fixtures = {r["fixture_id"] for r in before}
+    rows, _, _ = featured_window(db)
+    candidate = next(row for row in rows if row["fixture_id"] not in recorded_fixtures)
+    old = db.get(Prediction, candidate["prediction_id"])
+    probabilities = copy.deepcopy(old.probabilities)
+    probabilities["1x2"] = {"home": 0.99, "draw": 0.005, "away": 0.005}
+    revised = Prediction(
+        fixture_id=old.fixture_id,
+        model_id=old.model_id,
+        input_cutoff=old.input_cutoff,
+        history_fetched_at=old.history_fetched_at,
+        fixture_kickoff=old.fixture_kickoff,
+        probabilities=probabilities,
+        factors=copy.deepcopy(old.factors),
+        quality=old.quality,
+        mode=old.mode,
+        input_hash="stronger-current-input-regression",
+    )
+    db.add(revised)
+    db.flush()
+    quote = Quote(
+        fixture_id=old.fixture_id,
+        bookmaker_id=candidate["bookmaker_id"],
+        market="1x2",
+        outcome="home",
+        price=1.03,
+        snapshot_key="stronger-current-price-regression",
+        mode=old.mode,
+        source_updated_at=now(),
+    )
+    db.add(quote)
+    db.flush()
+    db.add(Publication(prediction_id=revised.id, quote_id=quote.id))
+    db.commit()
+    publish_recommendations(db)
+    db.commit()
+    after = recommendation_rows(db, upcoming=True)
+    assert len(after) == 5
+    assert any(r["fixture_id"] == old.fixture_id and r["probability"] == 0.99 for r in after)
+    archive = {r["recommendation_id"]: r for r in recommendation_rows(db)}
+    for original in before:
+        retained = archive[original["recommendation_id"]]
+        assert retained["id"] == original["id"]
+        assert retained["probability"] == original["probability"]
+        assert retained["odds"] == original["odds"]

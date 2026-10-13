@@ -141,6 +141,10 @@ def ingest(db):
         records = provider(db).fixtures()
         events = []
     upsert_fixtures(db, records, mode, fetched)
+    if mode == "live" and settings.football_provider == "football-data":
+        from .team_aliases import install_football_data_aliases
+
+        install_football_data_aliases(db)
     db.commit()
     prefix = "demo" if mode == "demo" else settings.football_provider
     fixtures = list(

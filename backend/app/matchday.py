@@ -14,7 +14,7 @@ from .leagues import BY_ID
 from .models import Competition, Fixture, Prediction, Team
 from .picks import recommendation_rows
 from .reasons import pick_reason
-from .research import all_rows, require_fixture
+from .research import all_rows, recorded_price_usable, require_fixture
 
 router = APIRouter(prefix="/api", tags=["matchday"])
 
@@ -334,7 +334,7 @@ def suggestions(
 ):
     if min_odds > max_odds:
         raise HTTPException(422, "Minimum odds must be below maximum odds.")
-    rows = [r for r in current_quotes(db) if r["mode"] == "demo" or not r["stale"]]
+    rows = [r for r in current_quotes(db) if recorded_price_usable(r)]
     # Search up to 18 earliest fixtures and all priced outcomes per bookmaker/fixture.
     fixture_ids = list(
         dict.fromkeys(r["fixture_id"] for r in sorted(rows, key=lambda r: r["kickoff"]))

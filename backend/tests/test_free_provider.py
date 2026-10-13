@@ -157,6 +157,29 @@ def test_monthly_and_minute_limits_stop_before_network(empty_db):
         ProviderClient(empty_db, "minute", 10, minute_budget=1).get("https://unused.invalid", {})
 
 
+def test_daily_recorded_prices_expire_without_becoming_fresh(monkeypatch):
+    from app.research import recorded_price_usable
+
+    anchor = now()
+    monkeypatch.setattr("app.research.now", lambda: anchor)
+    row = {
+        "mode": "live",
+        "stale": True,
+        "source_updated_at": anchor - timedelta(hours=2),
+        "fetched_at": anchor - timedelta(hours=1),
+    }
+    monkeypatch.setattr(settings, "poll_seconds", 86400)
+    assert recorded_price_usable(row) and row["stale"]
+    row["fetched_at"] = anchor - timedelta(hours=25)
+    assert not recorded_price_usable(row)
+    row["fetched_at"] = anchor - timedelta(hours=1)
+    row["source_updated_at"] = None
+    assert not recorded_price_usable(row)
+    row["source_updated_at"] = anchor - timedelta(hours=2)
+    monkeypatch.setattr(settings, "poll_seconds", 14400)
+    assert not recorded_price_usable(row)
+
+
 @pytest.mark.parametrize(
     "url",
     [
@@ -168,6 +191,50 @@ def test_monthly_and_minute_limits_stop_before_network(empty_db):
 )
 def test_crest_urls_exclude_arbitrary_hosts_and_credentials(url):
     assert safe_crest(url) is None
+
+
+def test_reviewed_aliases_use_provider_identity_and_refuse_conflicts(empty_db):
+    from app.models import ProviderMapping
+    from app.team_aliases import install_football_data_aliases
+
+    source = Team(name="Man City", provider_id="football-data:65")
+    other = Team(name="Man City", provider_id="api-football:65")
+    empty_db.add_all([source, other])
+    empty_db.flush()
+    assert install_football_data_aliases(empty_db) == 1
+    mapping = empty_db.scalar(select(ProviderMapping))
+    assert mapping.external_id == "Manchester City" and mapping.entity_id == source.id
+    assert install_football_data_aliases(empty_db) == 0
+    mapping.entity_id = other.id
+    empty_db.flush()
+    with pytest.raises(ProviderUnavailable, match="conflicts"):
+        install_football_data_aliases(empty_db)
+
+
+def test_live_league_picker_shows_current_seasons_once(empty_db, monkeypatch):
+    from app.main import meta
+    from app.models import Competition
+
+    monkeypatch.setattr(settings, "app_data_mode", "live")
+    monkeypatch.setattr(settings, "football_provider", "football-data")
+    for league in LEAGUES:
+        for season in (2025, 2026):
+            empty_db.add(
+                Competition(
+                    name=league.name,
+                    season=season,
+                    mode="live",
+                    provider_id=f"football-data:{league.id}:{season}",
+                )
+            )
+    empty_db.add(
+        Competition(name="Other feed", season=2026, mode="live", provider_id="api-football:39:2026")
+    )
+    empty_db.commit()
+    choices = meta(empty_db)["leagues"]
+    assert len(choices) == 5 and all(c["season"] == 2026 for c in choices)
+    assert {c["name"] for c in choices} == {league.name for league in LEAGUES}
+    assert len(list(empty_db.scalars(select(Competition)))) == 11
 
 
 def test_daily_shortlist_retains_original_prices_when_they_age(empty_db, monkeypatch):

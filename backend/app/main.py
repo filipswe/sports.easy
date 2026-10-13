@@ -201,6 +201,15 @@ def meta(db=Depends(get_db)):
     latest = db.scalar(
         select(func.max(Fixture.fetched_at)).where(Fixture.mode == settings.app_data_mode)
     )
+    competition_query = select(Competition).where(Competition.mode == settings.app_data_mode)
+    if settings.app_data_mode == "live":
+        competition_query = competition_query.where(
+            Competition.provider_id.startswith(settings.football_provider + ":")
+        )
+    # History stays stored, while the league picker shows each league's newest season once.
+    current = {}
+    for competition in sorted(db.scalars(competition_query), key=lambda c: -c.season):
+        current.setdefault(competition.provider_id.rsplit(":", 1)[0], competition)
     return {
         "mode": settings.app_data_mode,
         "model_version": VERSION,
@@ -211,12 +220,7 @@ def meta(db=Depends(get_db)):
         if settings.app_data_mode == "live" and settings.poll_seconds >= 86400
         else "",
         "data_fetched_at": latest,
-        "leagues": [
-            {"id": c.id, "name": c.name, "season": c.season}
-            for c in db.scalars(
-                select(Competition).where(Competition.mode == settings.app_data_mode)
-            )
-        ],
+        "leagues": [{"id": c.id, "name": c.name, "season": c.season} for c in current.values()],
         "bookmakers": [
             {"id": b.id, "name": b.name, "region": b.region}
             for b in db.scalars(

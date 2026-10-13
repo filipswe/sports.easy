@@ -8,9 +8,9 @@ from .config import settings
 from .db import now, utc
 from .leagues import BY_ID
 from .models import Competition, Recommendation, Settlement
-from .research import all_rows
+from .research import all_rows, recorded_price_usable
 
-POLICY = "top-five-leagues-24h-v2"
+POLICY = "top-five-leagues-24h-v3"
 
 
 def eligible_rows(db, fresh_only=False):
@@ -40,28 +40,26 @@ def featured_window(db, fresh_only=False):
 
 
 def publish_recommendations(db):
-    # New official picks need fresh prices. Already published picks remain visible
-    # with their original price and an outdated-price label between free refreshes.
-    rows, start, end = featured_window(db, fresh_only=True)
+    # Daily free feeds use actual snapshots fetched within 24h, explicitly labelled
+    # outdated when applicable. Faster feeds still require fresh source timestamps.
+    rows, start, end = featured_window(db)
+    rows = [row for row in rows if recorded_price_usable(row)]
     if not rows:
         return
-    recorded = list(db.scalars(select(Recommendation)))
-    eligible_fixtures = {r["fixture_id"] for r in rows}
-    # Previously published near-term picks remain frozen; distant picks stay in the archive.
-    active = [r for r in recorded if r.fixture_id in eligible_fixtures]
-    available = 5 - len(active)
-    if available <= 0:
-        return
-    seen = {r.fixture_id for r in recorded}
+    recorded = {r.fixture_id for r in db.scalars(select(Recommendation))}
+    seen, selected = set(), 0
     for row in sorted(rows, key=lambda r: (-r["probability"], -r["odds"], r["kickoff"], r["id"])):
         if row["fixture_id"] in seen:
             continue
         seen.add(row["fixture_id"])
-        db.add(
-            Recommendation(fixture_id=row["fixture_id"], publication_id=row["id"], policy=POLICY)
-        )
-        available -= 1
-        if not available:
+        if row["fixture_id"] not in recorded:
+            db.add(
+                Recommendation(
+                    fixture_id=row["fixture_id"], publication_id=row["id"], policy=POLICY
+                )
+            )
+        selected += 1
+        if selected == 5:
             break
     db.flush()
 
@@ -97,4 +95,11 @@ def recommendation_rows(db, upcoming=False):
                 "corrected": bool(settlement and settlement.supersedes_id),
             }
         )
-    return sorted(items, key=lambda r: (r["kickoff"], r["id"]))[:5] if upcoming else items
+    if upcoming:
+        # New source coverage can introduce stronger picks. Earlier official picks
+        # remain immutable in Performance instead of occupying the shortlist forever.
+        strongest = sorted(
+            items, key=lambda r: (-r["probability"], -r["odds"], r["kickoff"], r["id"])
+        )[:5]
+        return sorted(strongest, key=lambda r: (r["kickoff"], r["id"]))
+    return items
