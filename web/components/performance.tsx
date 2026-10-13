@@ -156,11 +156,11 @@ export function Performance() {
                           href={"/matches/" + s.fixture_id}
                         >
                           <span>
-                            <TeamBadge name={s.home} />
+                            <TeamBadge name={s.home} src={s.home_logo} />
                             {s.home}
                           </span>
                           <span>
-                            <TeamBadge name={s.away} />
+                            <TeamBadge name={s.away} src={s.away_logo} />
                             {s.away}
                           </span>
                         </Link>

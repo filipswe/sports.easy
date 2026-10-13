@@ -24,6 +24,8 @@ export type Pick = {
   prices: Price[];
   home: string;
   away: string;
+  home_logo?: string | null;
+  away_logo?: string | null;
   kickoff: string;
   user_odds?: number | null;
 };
@@ -109,5 +111,7 @@ export const withMatch = (p: Pick, m: MatchRow): Pick => ({
   ...p,
   home: m.home,
   away: m.away,
+  home_logo: m.home_logo,
+  away_logo: m.away_logo,
   kickoff: m.kickoff,
 });

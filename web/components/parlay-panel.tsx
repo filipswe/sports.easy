@@ -124,7 +124,7 @@ export function ParlayPanel({ full = false }: { full?: boolean }) {
                   </button>
                 </div>
                 <div className="slip-fixture">
-                  <TeamBadge name={p.home} />
+                  <TeamBadge name={p.home} src={p.home_logo} />
                   <Link href={"/matches/" + p.fixture_id}>
                     {p.home} – {p.away}
                   </Link>

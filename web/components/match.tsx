@@ -12,6 +12,7 @@ import { useApp } from "./shell";
 type Stats = {
   recent: {
     opponent: string;
+    opponent_logo?: string | null;
     score: string;
     result: string;
     kickoff: string;
@@ -28,7 +29,13 @@ type Detail = {
   status: string;
   home_stats: Stats;
   away_stats: Stats;
-  head_to_head: { home: string; away: string; score: string }[];
+  head_to_head: {
+    home: string;
+    away: string;
+    home_logo?: string | null;
+    away_logo?: string | null;
+    score: string;
+  }[];
   prediction: {
     generated_at: string;
     input_cutoff: string;
@@ -56,12 +63,20 @@ function Form({ stats }: { stats: Stats }) {
     </div>
   );
 }
-function Recent({ name, stats }: { name: string; stats: Stats }) {
+function Recent({
+  name,
+  src,
+  stats,
+}: {
+  name: string;
+  src?: string | null;
+  stats: Stats;
+}) {
   return (
     <div className="panel recent-panel">
       <div className="section-heading">
         <h3>
-          <TeamBadge name={name} />
+          <TeamBadge name={name} src={src} />
           {name}
         </h3>
         <Form stats={stats} />
@@ -79,7 +94,7 @@ function Recent({ name, stats }: { name: string; stats: Stats }) {
               })}
             </span>
             <span>
-              <TeamBadge name={r.opponent} />
+              <TeamBadge name={r.opponent} src={r.opponent_logo} />
               {r.opponent}
             </span>
             <b>{r.score}</b>
@@ -381,8 +396,16 @@ export function MatchDetail({ id }: { id: string }) {
                   </div>
                 ))}
               </div>
-              <Recent name={match.home} stats={detail.home_stats} />
-              <Recent name={match.away} stats={detail.away_stats} />
+              <Recent
+                name={match.home}
+                src={match.home_logo}
+                stats={detail.home_stats}
+              />
+              <Recent
+                name={match.away}
+                src={match.away_logo}
+                stats={detail.away_stats}
+              />
             </>
           ) : (
             <section className="panel">
@@ -391,12 +414,12 @@ export function MatchDetail({ id }: { id: string }) {
                 detail.head_to_head.map((r, i) => (
                   <div className="h2h-row" key={i}>
                     <span>
-                      <TeamBadge name={r.home} />
+                      <TeamBadge name={r.home} src={r.home_logo} />
                       {r.home}
                     </span>
                     <b>{r.score}</b>
                     <span>
-                      <TeamBadge name={r.away} />
+                      <TeamBadge name={r.away} src={r.away_logo} />
                       {r.away}
                     </span>
                   </div>

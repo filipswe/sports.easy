@@ -1,4 +1,5 @@
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -34,6 +35,16 @@ class Settings(BaseSettings):
     smtp_from: str = "research@example.invalid"
     smtp_starttls: bool = True
     regional_notice: str = "Adults 18+ only. Check the rules where you live."
+
+    @property
+    def local_email_links(self):
+        origin = urlsplit(self.public_origin)
+        return (
+            self.app_env == "development"
+            and not self.smtp_host
+            and origin.scheme in {"http", "https"}
+            and origin.hostname in {"localhost", "127.0.0.1", "::1"}
+        )
 
 
 settings = Settings()

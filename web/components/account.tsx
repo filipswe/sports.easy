@@ -146,7 +146,7 @@ export function Account() {
         </p>
         {meta?.email_demo && (
           <p className="hint">
-            Local demo email mode: verification and reset links appear here
+            Local email preview: verification and reset links appear here
             instead of being sent. Use a fictional address and a unique test
             password. This mode must not be publicly deployed.
           </p>
@@ -346,7 +346,7 @@ export function Account() {
             {link && (
               <div className="notice amber">
                 <div>
-                  <strong>Local demo email</strong>
+                  <strong>Local email preview</strong>
                   <br />
                   <a className="text-link" href={link}>
                     Open verification / reset link →

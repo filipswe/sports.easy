@@ -180,8 +180,8 @@ export function Parlays() {
                       {p.legs.map((l) => (
                         <div className="suggestion-leg" key={l.fixture_id}>
                           <div>
-                            <TeamBadge name={l.home} />
-                            <TeamBadge name={l.away} />
+                            <TeamBadge name={l.home} src={l.home_logo} />
+                            <TeamBadge name={l.away} src={l.away_logo} />
                           </div>
                           <div>
                             <Link href={"/matches/" + l.fixture_id}>

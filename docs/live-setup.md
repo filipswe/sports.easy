@@ -1,13 +1,14 @@
-# Connect actual bookmaker odds
+# Connect real fixtures and bookmaker odds for free
 
-The existing `.env` currently has neither provider key. The site will continue to show labelled demo data until live mode is configured; no real price is claimed without a provider quote.
+The free setup uses **football-data.org** for real fixtures/results and **The Odds API** for Pinnacle prices. API-Football's Free key can remain saved, but this setup does not use it because its current-season request was rejected. Credentials stay in the ignored `.env`, never GitHub or browser code.
 
-1. Create an account at [API-Football](https://dashboard.api-football.com/register). Copy the dashboard API key. Confirm your plan covers the current and previous season for Premier League, La Liga, Serie A, Bundesliga and Ligue 1. The [free plan](https://www.api-football.com/pricing) has limited seasons; Pro is listed at $19/month. A key alone does not establish current-season access.
-2. Get a key through [The Odds API](https://the-odds-api.com/), using its **Get Access / Starter** signup or [account dashboard](https://dash.the-odds-api.com/). Starter currently has 500 credits/month. This is suitable for initial connection testing; repeated five-league refreshes need a larger allowance. Confirm Pinnacle coverage for your account before upgrading.
-3. Edit the project's ignored `.env`, retaining the existing random `SESSION_SECRET` and database password. Add the real keys and change these entries:
+1. Create a [football-data.org Free account](https://www.football-data.org/client/register). Its [free coverage](https://www.football-data.org/coverage) includes Premier League, La Liga, Serie A, Bundesliga and Ligue 1. Scores and schedules are delayed; this is a pre-match app. The token arrives by email. The account checked on 13 October 2026 accepted 2026 and 2025 Premier League matches, including halftime scores. Check each account's history entitlement rather than assuming it.
+2. Get a free Starter key from [The Odds API](https://the-odds-api.com/). The verified account supplied Pinnacle Premier League 1X2 and total prices. A valid key does not guarantee every event or market has a price.
+3. Retain the existing database password and private session secret. Set these entries in `.env`:
 
 ```dotenv
-API_FOOTBALL_KEY=your_dashboard_key
+FOOTBALL_PROVIDER=football-data
+FOOTBALL_DATA_KEY=your_free_football_data_token
 ODDS_API_KEY=your_odds_key
 APP_DATA_MODE=live
 APP_ENV=development
@@ -15,22 +16,35 @@ PUBLIC_ORIGIN=http://localhost:3000
 COOKIE_SECURE=false
 ODDS_BOOKMAKER_KEY=pinnacle
 ODDS_REGION=eu
+POLL_SECONDS=86400
+PROVIDER_DAILY_BUDGET=80
+ODDS_DAILY_BUDGET=12
+ODDS_MONTHLY_BUDGET=450
 ```
 
-Keep credentials out of GitHub and chat. `COOKIE_SECURE=false` is accepted only for the loopback development setup; a public production deployment still requires HTTPS and secure cookies.
-
-The ingestion gate `LIVE_RETENTION_APPROVED=true` must reflect review of your account's display/storage terms. Provider terms: [API-Football](https://www.api-football.com/terms) and [The Odds API](https://the-odds-api.com/terms-and-conditions.html). Leave the gate false until that review is complete.
-
-4. Recreate the services so the updated environment is applied (a restart alone does not reload `.env`):
+4. Review the [football-data.org registration terms](https://www.football-data.org/client/register) and [The Odds API terms](https://the-odds-api.com/terms-and-conditions.html), then set `LIVE_RETENTION_APPROVED=true` for the applicable deployment. The football feed requires attribution, included in the live footer. Stop displaying its data after account cancellation. Club graphics have separate ownership rights. The odds terms permit storage and analytical app display, but not raw-feed resale. The local setup review does not establish commercial publication rights to club graphics.
+5. Recreate services to apply the environment and schema:
 
 ```sh
 docker compose up --build -d
 ```
 
-The worker performs ingestion. Follow its status with `docker compose logs -f worker` and stop log-following with Ctrl+C. Do not run concurrent manual ingestion. No bet placement or bookmaker account access is used.
+The worker handles ingestion. Do not run manual ingestion concurrently with it. Follow status with `docker compose logs -f worker`; Ctrl+C stops log-following without stopping the app. Restarting alone does not reload `.env`.
 
-5. Verify the live-mode feed before using its prices. Provider error/entitlement limits, unmatched club names, missing history or market coverage can cause empty results; they are not replaced with synthetic fixtures or prices. The first five-league odds sweep reserves 10 credits; football history requests two seasons for each league. The current budget limits the number of sweeps and prices may age between them.
+## Free allowance and price age
 
-Current priced live coverage is 1X2 and offered totals at 2.5. BTTS, first-half and additional market prices require the provider's per-event market integration. Model estimates and manually entered odds do not qualify as verified bookmaker quotes.
+One five-league odds sweep reserves 10 credits: five requests × two markets. Daily refreshes use 280–310 credits/month before retries, within the verified Starter allowance of 500. Daily and monthly guards reserve usage before every attempt, including failures. The monthly guard uses UTC calendar months; the provider's billing reset can differ, and its remaining quota still applies. Verification requests outside the worker also consume credits.
 
-Existing demo records and accounts remain stored, but live requests are isolated from demo fixtures, quotes and recommendations. Public deployments also require SMTP delivery for account verification/reset.
+Prices retain the bookmaker's original update time and become outdated after ten minutes. Daily refreshes are not continuous pricing. Published official picks remain visible with their original price and an outdated-price label. New recommendations and fresh-price parlay suggestions require fresh quotes. Custom parlays identify recorded or explicitly entered prices.
+
+The football refresh uses ten requests: current and previous seasons across five leagues. Its local ten-request-per-minute cap protects the Free tier. A denied previous season can be skipped, but current-season denial is never hidden. The model abstains below 40 league results or eight results for a club. Missing halftime scores disable the separate first-half estimate.
+
+Current live prices cover 1X2 and offered totals at 2.5. BTTS, first-half and other prices require a per-event integration and additional credits; unsupported prices remain blank. Model probabilities and entered odds are not bookmaker quotes.
+
+## Accounts and existing records
+
+Accounts, demo predictions and saved records remain stored. Live views exclude demo data; fixture and team identities have their own provider namespace. Switching an established live installation between football providers requires a separate database or reviewed identity migration.
+
+Loopback development can show verification/reset links without SMTP, including with real football data. Public production requires SMTP, HTTPS, secure cookies and a private session secret. No bookmaker login or bet placement is used.
+
+For an existing API-Football subscription, choose `FOOTBALL_PROVIDER=api-football` and configure `API_FOOTBALL_KEY`. Current/previous-season entitlement is still required. This free setup makes that subscription unnecessary.

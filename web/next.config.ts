@@ -23,7 +23,7 @@ const config: NextConfig = {
             value:
               "default-src 'self'; script-src 'self' 'unsafe-inline'" +
               (process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'") +
-              "; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://media.api-sports.io; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+              "; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://media.api-sports.io https://crests.football-data.org; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
           },
         ],
       },

@@ -229,7 +229,7 @@ def meta(db=Depends(get_db)):
         "region": settings.odds_region,
         "freshness_seconds": settings.quote_max_age_seconds,
         "regional_notice": settings.regional_notice,
-        "email_demo": settings.app_data_mode == "demo" and not settings.smtp_host,
+        "email_demo": settings.local_email_links,
     }
 
 

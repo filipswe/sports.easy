@@ -66,7 +66,7 @@ export function TeamBadge({
 }: {
   name: string;
   away?: boolean;
-  src?: string;
+  src?: string | null;
 }) {
   const [failed, setFailed] = useState(false);
   const local = (clubCrests as Record<string, string>)[name];
@@ -176,11 +176,11 @@ export function PredictionCard({
       </div>
       <Link className="teams" href={"/matches/" + s.fixture_id}>
         <div>
-          <TeamBadge name={s.home} />
+          <TeamBadge name={s.home} src={s.home_logo} />
           <strong>{s.home}</strong>
         </div>
         <div>
-          <TeamBadge name={s.away} away />
+          <TeamBadge name={s.away} src={s.away_logo} away />
           <strong>{s.away}</strong>
         </div>
       </Link>

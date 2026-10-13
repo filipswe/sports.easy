@@ -4,6 +4,8 @@ export type Selection = {
   fixture_id: string;
   home: string;
   away: string;
+  home_logo?: string | null;
+  away_logo?: string | null;
   competition: string;
   competition_id: string;
   kickoff: string;
@@ -37,6 +39,8 @@ export type Selection = {
 export type Meta = {
   mode: string;
   model_version: string;
+  football_provider?: string;
+  feed_notice?: string;
   data_fetched_at: string | null;
   leagues: { id: string; name: string; season: number }[];
   bookmakers: { id: string; name: string; region: string }[];

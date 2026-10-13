@@ -198,6 +198,35 @@ def ingest(db):
     db.commit()
     if mode == "live":
         events = TheOddsAPI(db).odds()
+    rejected = store_odds(db, events, fetched=fetched)
+    settle(db)
+    db.add(
+        IngestionRun(
+            provider=mode,
+            status="complete",
+            detail={"fixtures": len(records), "unmatched_events": rejected},
+        )
+    )
+    db.commit()
+    from .picks import publish_recommendations
+
+    publish_recommendations(db)
+    db.commit()
+    return {"fixtures": len(records), "unmatched_events": rejected, "mode": mode}
+
+
+def store_odds(db, events, fetched=None):
+    """Import recorded provider snapshots without fetching or refreshing their source age."""
+    mode, fetched = settings.app_data_mode, fetched or now()
+    prefix = "demo" if mode == "demo" else settings.football_provider
+    fixtures = list(
+        db.scalars(
+            select(Fixture).where(
+                Fixture.mode == mode, Fixture.provider_id.startswith(prefix + ":")
+            )
+        )
+    )
+    competitions = {c.id: c.provider_id.split(":")[1] for c in db.scalars(select(Competition))}
     teams = list(db.scalars(select(Team)))
     names = {}
     for t in teams:
@@ -294,20 +323,7 @@ def ingest(db):
                         )
                         if not exists:
                             db.add(Publication(prediction_id=prediction.id, quote_id=quote.id))
-    settle(db)
-    db.add(
-        IngestionRun(
-            provider=mode,
-            status="complete",
-            detail={"fixtures": len(records), "unmatched_events": rejected},
-        )
-    )
-    db.commit()
-    from .picks import publish_recommendations
-
-    publish_recommendations(db)
-    db.commit()
-    return {"fixtures": len(records), "unmatched_events": rejected, "mode": mode}
+    return rejected
 
 
 def settle(db):

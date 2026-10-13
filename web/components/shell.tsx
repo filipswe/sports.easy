@@ -104,7 +104,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             {meta?.mode === "demo"
               ? "Sample data · Live feed not connected"
               : meta
-                ? "Pre-match insights"
+                ? meta.feed_notice || "Pre-match insights"
                 : failed
                   ? "Data service unavailable"
                   : "Connecting…"}
@@ -134,6 +134,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
             sports<span>.easy</span>
           </Link>
           <p>Your matchday, made simpler.</p>
+          {meta?.mode === "live" &&
+            meta.football_provider === "football-data" && (
+              <p>
+                Football data provided by the{" "}
+                <a href="https://www.football-data.org/">
+                  Football-Data.org API
+                </a>
+                .
+              </p>
+            )}
         </div>
         <div className="footer-links">
           {[

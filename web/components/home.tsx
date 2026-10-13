@@ -79,12 +79,12 @@ export function Home() {
               <>
                 <div className="hero-match-teams">
                   <div>
-                    <TeamBadge name={top.home} />
+                    <TeamBadge name={top.home} src={top.home_logo} />
                     <b>{top.home}</b>
                   </div>
                   <span>VS</span>
                   <div>
-                    <TeamBadge name={top.away} />
+                    <TeamBadge name={top.away} src={top.away_logo} />
                     <b>{top.away}</b>
                   </div>
                 </div>

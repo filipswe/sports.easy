@@ -50,7 +50,7 @@ class TokenInput(BaseModel):
 
 
 def issue_token(db, user, purpose):
-    if not settings.smtp_host and settings.app_data_mode != "demo":
+    if not settings.smtp_host and not settings.local_email_links:
         raise HTTPException(503, "Email delivery is not configured")
     raw = secrets.token_urlsafe(32)
     db.execute(delete(AuthToken).where(AuthToken.user_id == user.id, AuthToken.purpose == purpose))
@@ -83,13 +83,7 @@ def issue_token(db, user, purpose):
                 server.send_message(message)
         except (OSError, smtplib.SMTPException):
             raise HTTPException(503, "Email delivery temporarily unavailable") from None
-    return (
-        link
-        if settings.app_data_mode == "demo"
-        and settings.app_env == "development"
-        and not settings.smtp_host
-        else None
-    )
+    return link if settings.local_email_links else None
 
 
 @router.get("/csrf")
