@@ -147,6 +147,8 @@ The admin command requires an existing verified account and records an audit eve
 
 ## Live credentials and limitations
 
+Follow the [live signup and activation steps](docs/live-setup.md) to connect actual bookmaker prices.
+
 Read [provider capability, cost and rights notes](docs/providers.md) before enabling live mode. You need API-Football and The Odds API credentials/entitlements, a selected region, reviewed display/retention rights, SMTP, HTTPS and a real deployment secret. No credentials are bundled, and live mode never substitutes synthetic data. The adapters have not been tested against paid accounts in this session.
 
 Deliberately deferred: LLM commentary (deterministic explanations work), calibrated probabilities, archival historical odds ingestion, real validated performance, additional leagues beyond the top five, expanded live-market prices, injuries/lineups/xG/standings feeds and payment/betting operations. Dedicated model-input version storage, SQL-based large-archive ranking, shared rate limiting and production observability integration need further work before scale. This MVP uses compact season/market/stat representations instead of building unnecessary unused tables. See the [architecture and actual controls](docs/architecture.md), [model methodology](docs/methodology.md), [deployment/rollback guide](docs/deployment.md) and [verification report](docs/verification.md).

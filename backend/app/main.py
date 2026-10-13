@@ -4,6 +4,7 @@ import secrets
 import time
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
+from urllib.parse import urlsplit
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -45,9 +46,24 @@ async def lifespan(app):
         len(settings.session_secret) < 32
         or "local-only" in settings.session_secret
         or "replace-with" in settings.session_secret
-        or not settings.cookie_secure
     ):
-        raise RuntimeError("Live mode requires a private SESSION_SECRET and COOKIE_SECURE=true")
+        raise RuntimeError("Live mode requires a private SESSION_SECRET")
+    origin = urlsplit(settings.public_origin)
+    local_http = (
+        settings.app_env == "development"
+        and origin.scheme == "http"
+        and origin.hostname in {"localhost", "127.0.0.1", "::1"}
+    )
+    if (
+        (settings.app_data_mode == "live" or settings.app_env == "production")
+        and (not settings.cookie_secure or origin.scheme != "https")
+        and not local_http
+    ):
+        raise RuntimeError("Public live deployments require HTTPS and COOKIE_SECURE=true")
+    if settings.app_env == "production" and (
+        origin.scheme != "https" or not settings.cookie_secure
+    ):
+        raise RuntimeError("Production requires HTTPS and COOKIE_SECURE=true")
     if settings.app_env == "production" and not settings.smtp_host:
         raise RuntimeError("Production account workflows require SMTP delivery")
     yield
