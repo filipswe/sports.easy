@@ -35,3 +35,11 @@ Prediction objects are immutable. However, source fixture history is mutable and
 Version poisson-v1.1 fits a separate first-half model from recorded half-time scores. It uses the same past-only availability cutoff, regularization and minimum samples as the full-time fit. The three first-half goal lines are unavailable if those samples are missing. Extended full-time totals and team totals use analytic Poisson probabilities; correct scores include a remaining-score bucket so the distribution sums to one. Double-chance outcomes overlap and are not a mutually exclusive distribution.
 
 Parlays use one selection per fixture and reject repeated clubs. Combined probability is the product of leg probabilities under the independence approximation, not a calibrated joint estimate. Prices are multiplied from one common sportsbook only, or from explicitly user-entered prices for every leg. Suggestions search priced outcomes with a bounded beam; the available source coverage and search bounds limit what can be returned. Expanded model estimates do not imply that those sportsbook prices exist.
+
+## Top-five-league matchday policy
+
+Version poisson-v1.2 fits each league independently and saves last-five scoring summaries in the prediction factors. A per-ingestion cache reuses the same fitted league strengths for fixtures sharing the same eligible history and cutoff; it does not reuse a fit across leagues or changed histories. Historical evaluation uses past-only league-specific training.
+
+The featured shortlist's 24-hour window begins at the earliest available priced fixture across the five leagues. Up to five distinct fixtures are selected by model probability, then displayed chronologically. This is a probability shortlist, not a requirement to publish one pick per league or extend the window to manufacture five picks. Old recommendations are never deleted; distant records remain in the archive until their outcomes arrive.
+
+Outcome explanations use the saved expected-goal rates and recent scoring summaries. Leading-outcome status is determined within the selected market (including three-way results). A result can be the leading 1X2 outcome while still having less than a 50% chance. First-half explanations use their own rates. Recent form figures provide supporting context, not a claim of causal feature attribution or injury knowledge.

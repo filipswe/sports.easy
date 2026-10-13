@@ -34,3 +34,7 @@ Missing keys or unapproved retention yields an explicit unavailable job. Live mo
 The matchday interface uses one sportsbook source. The Odds API lists Pinnacle in its EU coverage, and the documented `bookmakers` parameter overrides `regions`. This does not provide a Pinnacle account connection or bet placement. Market prices remain subject to feed availability. The existing adapter retrieves 1X2 and 2.5 total quotes; BTTS and expanded goal lines need per-event market integration for live prices. See [bookmaker coverage](https://the-odds-api.com/sports-odds-data/bookmaker-apis.html), [request parameters](https://the-odds-api.com/liveapi/guides/v4/) and [market catalog](https://the-odds-api.com/sports-odds-data/betting-markets.html).
 
 Club crest assets use the API-Sports media host, with local sample club files for the current fixtures. Display/retention rights and club identity accuracy need to be covered by the deployment operator's agreement.
+
+## Five-league requests
+
+The league catalog maps Premier League, La Liga, Serie A, Bundesliga and Ligue 1 to their API-Football league IDs and The Odds API sport keys. A complete football refresh requests two seasons for each league (10 requests); a complete odds sweep requests five leagues at two market credits each (10 reserved credits before retries). Daily budgets continue to cap requests, so production polling needs budgets and provider entitlements sized for five-league coverage. A failed live sweep never substitutes sample data.

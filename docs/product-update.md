@@ -4,7 +4,7 @@ The main navigation is Home, All matches, Parlays, Performance and How it works.
 
 ## Recommended picks
 
-The worker freezes up to five official recommendations, with one pick per fixture. Eligible priced outcomes are ranked by estimated model probability; the recorded pick stays unchanged. Live recommendations require fresh prices. The worker fills vacancies as matches finish or become unavailable. Performance counts only these official picks at their original publication and odds. Existing quotes, saved records, model versions and settlement revisions remain in the database.
+The worker freezes up to five official recommendations across Premier League, La Liga, Serie A, Bundesliga and Ligue 1, with one pick per fixture. The featured window starts at the earliest eligible kickoff and lasts 24 hours. Priced outcomes within that window are selected by estimated model probability and displayed in kickoff order; the recorded pick stays unchanged. Live recommendations require fresh prices. The worker fills vacancies within the current matchday window. Older distant recommendations remain in the performance archive but are excluded from the featured section. All matches can span seven days and are also always shown in kickoff order. Performance counts only these official picks at their original publication and odds. Existing quotes, saved records, model versions and settlement revisions remain in the database.
 
 ## Markets and analysis
 
@@ -24,4 +24,10 @@ The product uses one odds source; multi-bookmaker comparison is removed from the
 
 ## Club crests
 
-The twelve sample clubs use local API-Sports crest PNGs. Additional API-Football club identities use that provider's corresponding crest URL. A text fallback handles image failures. Image display rights must be covered by the provider agreement before commercial operation. No club endorsement is implied.
+The sixty sample clubs across the five leagues use local API-Sports crest PNGs. Additional API-Football club identities use that provider's corresponding crest URL. A text fallback handles image failures. Image display rights must be covered by the provider agreement before commercial operation. No club endorsement is implied.
+
+## League isolation and pick reasons
+
+Live football and odds adapters request all five configured leagues. History, model fits, recent form and chronological evaluation are separated by league, including matching past seasons of the same league. Demo ingestion adds four leagues to the existing English demo, retaining its original IDs, timeline, quotes, saved accounts and official records. The expanded seed has 1,320 historical fixtures and 60 upcoming fixtures; upcoming fixtures disappear normally at kickoff.
+
+Every market outcome has a server-generated explanation from its saved model factors: projected home/away goals, last-five goals scored/conceded and wins, the probability calculation relevant to that market, and whether it is actually the model's leading outcome. First-half explanations use the separate half-time fit, not full-time goal rates. Lower-chance selections are clearly identified. Featured cards include “Why this pick?”; the match analysis expands the explanation and supporting figures. No injuries, lineups or fabricated qualitative claims are used.
