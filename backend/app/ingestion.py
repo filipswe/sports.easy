@@ -4,6 +4,7 @@ from decimal import Decimal
 from sqlalchemy import select
 
 from .config import settings
+from .crests import safe_crest
 from .db import now, utc
 from .leagues import BY_SPORT, LEAGUES
 from .model import VERSION, outcome_won, predict
@@ -24,6 +25,7 @@ from .providers import (
     APIFootball,
     DemoFootball,
     DemoOdds,
+    FootballData,
     ProviderUnavailable,
     TheOddsAPI,
     fingerprint,
@@ -50,7 +52,7 @@ def ensure_model(db):
 
 
 def upsert_fixtures(db, records, mode, fetched):
-    prefix = "demo" if mode == "demo" else "api-football"
+    prefix = "demo" if mode == "demo" else settings.football_provider
     for item in records:
         comp_key = f"{prefix}:{item.get('league_id', settings.league_id)}:{item['season']}"
         comp = db.scalar(select(Competition).where(Competition.provider_id == comp_key))
@@ -72,6 +74,9 @@ def upsert_fixtures(db, records, mode, fetched):
                 team = Team(provider_id=key, name=t["name"])
                 db.add(team)
                 db.flush()
+            crest = safe_crest(t.get("crest") or t.get("logo"))
+            if crest:
+                team.crest_url = crest
             ids.append(team.id)
         key = f"{prefix}:{item['id']}"
         fixture = db.scalar(select(Fixture).where(Fixture.provider_id == key))
@@ -89,6 +94,7 @@ def upsert_fixtures(db, records, mode, fetched):
         for field in ["home_half_goals", "away_half_goals"]:
             setattr(fixture, field, item.get(field))
         fixture.fetched_at = fetched
+        fixture.provider_updated_at = item.get("provider_updated_at")
         if item["status"] == "finished" and (result_changed or fixture.result_available_at is None):
             # Live history first seen now cannot be pretended to have been available earlier.
             fixture.result_available_at = (
@@ -131,11 +137,19 @@ def ingest(db):
             raise ProviderUnavailable(
                 "Live ingestion disabled until retention/display terms are reviewed"
             )
-        records = APIFootball(db).fixtures()
+        provider = FootballData if settings.football_provider == "football-data" else APIFootball
+        records = provider(db).fixtures()
         events = []
     upsert_fixtures(db, records, mode, fetched)
     db.commit()
-    fixtures = list(db.scalars(select(Fixture).where(Fixture.mode == mode)))
+    prefix = "demo" if mode == "demo" else settings.football_provider
+    fixtures = list(
+        db.scalars(
+            select(Fixture).where(
+                Fixture.mode == mode, Fixture.provider_id.startswith(prefix + ":")
+            )
+        )
+    )
     competitions = {c.id: c.provider_id.split(":")[1] for c in db.scalars(select(Competition))}
     histories = {}
     for f in fixtures:
@@ -187,7 +201,7 @@ def ingest(db):
     teams = list(db.scalars(select(Team)))
     names = {}
     for t in teams:
-        if t.provider_id.startswith("demo:" if mode == "demo" else "api-football:"):
+        if t.provider_id.startswith(prefix + ":"):
             if t.name.casefold() in names:  # Duplicate identity names must not resolve.
                 names[t.name.casefold()] = None
             else:

@@ -19,6 +19,10 @@ class ProviderUnavailable(Exception):
     pass
 
 
+class ProviderEntitlement(ProviderUnavailable):
+    pass
+
+
 class FootballDataProvider(Protocol):
     def fixtures(self) -> list[dict]: ...
 
@@ -34,8 +38,9 @@ def parse_time(text):
 
 
 class ProviderClient:
-    def __init__(self, db, provider, budget):
+    def __init__(self, db, provider, budget, monthly_budget=None, minute_budget=None):
         self.db, self.provider, self.budget = db, provider, budget
+        self.monthly_budget, self.minute_budget = monthly_budget, minute_budget
 
     def get(self, url, params, headers=None, cost=1):
         since = now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -53,6 +58,34 @@ class ProviderClient:
         for attempt in range(3):
             if used + cost > self.budget:
                 raise ProviderUnavailable("Local daily quota budget exhausted")
+            if self.monthly_budget is not None:
+                monthly_used = (
+                    self.db.scalar(
+                        select(func.count())
+                        .select_from(IngestionRun)
+                        .where(
+                            IngestionRun.provider == self.provider,
+                            IngestionRun.created_at >= since.replace(day=1),
+                        )
+                    )
+                    or 0
+                )
+                if monthly_used + cost > self.monthly_budget:
+                    raise ProviderUnavailable("Local monthly quota budget exhausted")
+            if self.minute_budget is not None:
+                recent = (
+                    self.db.scalar(
+                        select(func.count())
+                        .select_from(IngestionRun)
+                        .where(
+                            IngestionRun.provider == self.provider,
+                            IngestionRun.created_at > now() - timedelta(minutes=1),
+                        )
+                    )
+                    or 0
+                )
+                if recent + cost > self.minute_budget:
+                    raise ProviderUnavailable("Local provider requests-per-minute limit reached")
             reservations = [
                 IngestionRun(provider=self.provider, status="request", detail={})
                 for _ in range(cost)
@@ -74,6 +107,10 @@ class ProviderClient:
                     raise ProviderUnavailable("Provider quota exhausted; retry next scheduled job")
                 if response.status_code >= 500:
                     raise httpx.TransportError("Provider unavailable")
+                if response.status_code in (401, 403):
+                    raise ProviderEntitlement(
+                        "Provider rejected request; inspect account entitlement"
+                    )
                 if not response.is_success:
                     raise ProviderUnavailable(
                         "Provider rejected request; inspect account entitlement"
@@ -147,9 +184,114 @@ class APIFootball:
         return result
 
 
+FOOTBALL_DATA_CODES = {39: "PL", 140: "PD", 135: "SA", 78: "BL1", 61: "FL1"}
+
+
+class FootballData:
+    """Free current-season fixtures/results; optional previous-season entitlement."""
+
+    def __init__(self, db):
+        self.db = db
+        self.client = ProviderClient(
+            db, "football-data", settings.provider_daily_budget, minute_budget=10
+        )
+
+    def fixtures(self):
+        if not settings.football_data_key:
+            raise ProviderUnavailable("FOOTBALL_DATA_KEY is missing; free fixtures unavailable")
+        records = []
+        for league in LEAGUES:
+            # Current-season access must work. Earlier history is optional on the Free tier.
+            records.extend(self.league_fixtures(league, settings.season))
+            try:
+                records.extend(self.league_fixtures(league, settings.season - 1))
+            except ProviderEntitlement:
+                self.db.add(
+                    IngestionRun(
+                        provider="football-data-history",
+                        status="unavailable",
+                        detail={"league": league.id, "season": settings.season - 1},
+                    )
+                )
+                self.db.commit()
+        return records
+
+    def league_fixtures(self, league, season):
+        data = self.client.get(
+            f"https://api.football-data.org/v4/competitions/{FOOTBALL_DATA_CODES[league.id]}/matches",
+            {"season": season},
+            {"X-Auth-Token": settings.football_data_key},
+        )
+        if not isinstance(data, dict) or not isinstance(data.get("matches"), list):
+            raise ProviderUnavailable("Free football provider returned an invalid fixture list")
+        matches = data["matches"]
+        if data.get("resultSet", {}).get("count", len(matches)) != len(matches):
+            raise ProviderUnavailable("Free football provider returned incomplete history")
+        result = []
+        for item in matches:
+            if item.get("competition", {}).get("code") != FOOTBALL_DATA_CODES[league.id]:
+                raise ProviderUnavailable("Free football provider returned an unexpected league")
+            if int(item["season"]["startDate"][:4]) != season:
+                raise ProviderUnavailable("Free football provider returned an unexpected season")
+            score = item.get("score") or {}
+            full, half = score.get("fullTime") or {}, score.get("halfTime") or {}
+            status = {
+                "TIMED": "scheduled",
+                "SCHEDULED": "unconfirmed",
+                "FINISHED": "finished",
+                "POSTPONED": "postponed",
+                "CANCELLED": "cancelled",
+                "SUSPENDED": "started",
+            }.get(item["status"], "started")
+            verified = (
+                status == "finished"
+                and score.get("duration") == "REGULAR"
+                and all(
+                    isinstance(full.get(side), int) and full[side] >= 0 for side in ("home", "away")
+                )
+            )
+            if status == "finished" and not verified:
+                status = "unconfirmed"
+            teams = {}
+            for side in ("home", "away"):
+                team = item[side + "Team"]
+                if not team.get("id") or not team.get("name"):
+                    raise ProviderUnavailable("Free football provider returned an unknown club")
+                teams[side] = {
+                    "id": team["id"],
+                    "name": team.get("shortName") or team["name"],
+                    "crest": team.get("crest"),
+                }
+            result.append(
+                {
+                    "id": str(item["id"]),
+                    **teams,
+                    "kickoff": parse_time(item["utcDate"]),
+                    "status": status,
+                    "venue": item.get("venue"),
+                    "home_goals": full.get("home") if verified else None,
+                    "away_goals": full.get("away") if verified else None,
+                    "home_half_goals": half.get("home") if verified else None,
+                    "away_half_goals": half.get("away") if verified else None,
+                    "provider_updated_at": parse_time(item["lastUpdated"])
+                    if item.get("lastUpdated")
+                    else None,
+                    "league_id": league.id,
+                    "league_name": league.name,
+                    "season": season,
+                }
+            )
+        return result
+
+
 class TheOddsAPI:
     def __init__(self, db):
-        self.client = ProviderClient(db, "the-odds-api", settings.odds_daily_budget)
+        self.client = ProviderClient(
+            db,
+            "the-odds-api",
+            settings.odds_daily_budget,
+            monthly_budget=settings.odds_monthly_budget,
+        )
 
     def odds(self):
         if not settings.odds_api_key:

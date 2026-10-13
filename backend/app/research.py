@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
 
 from .config import settings
+from .crests import team_logo
 from .db import now, utc
 from .model import likelihood, value
 from .models import (
@@ -77,6 +78,8 @@ def publication_row(db, pub, prediction, quote, fixture, book, home, away, compe
         "quote_id": quote.id,
         "home": home.name,
         "away": away.name,
+        "home_logo": team_logo(home),
+        "away_logo": team_logo(away),
         "competition": competition.name,
         "competition_id": competition.id,
         "kickoff": utc(prediction.fixture_kickoff),

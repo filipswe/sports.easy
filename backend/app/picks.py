@@ -13,7 +13,7 @@ from .research import all_rows
 POLICY = "top-five-leagues-24h-v2"
 
 
-def eligible_rows(db):
+def eligible_rows(db, fresh_only=False):
     from .matchday import current_quotes
 
     competitions = {
@@ -25,12 +25,13 @@ def eligible_rows(db):
     return [
         r
         for r in current_quotes(db)
-        if r["competition_id"] in competitions and (r["mode"] == "demo" or not r["stale"])
+        if r["competition_id"] in competitions
+        and (not fresh_only or r["mode"] == "demo" or not r["stale"])
     ]
 
 
-def featured_window(db):
-    rows = eligible_rows(db)
+def featured_window(db, fresh_only=False):
+    rows = eligible_rows(db, fresh_only=fresh_only)
     if not rows:
         return [], None, None
     start = min(r["kickoff"] for r in rows)
@@ -39,7 +40,9 @@ def featured_window(db):
 
 
 def publish_recommendations(db):
-    rows, start, end = featured_window(db)
+    # New official picks need fresh prices. Already published picks remain visible
+    # with their original price and an outdated-price label between free refreshes.
+    rows, start, end = featured_window(db, fresh_only=True)
     if not rows:
         return
     recorded = list(db.scalars(select(Recommendation)))

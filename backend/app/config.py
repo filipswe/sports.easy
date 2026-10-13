@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     session_secret: str = "local-only-change-before-deployment-32chars"
     api_football_key: str = ""
+    football_provider: Literal["api-football", "football-data"] = "api-football"
+    football_data_key: str = ""
     odds_api_key: str = ""
     league_id: int = 39
     league_name: str = "Premier League"
@@ -21,6 +23,7 @@ class Settings(BaseSettings):
     odds_region: Literal["uk", "eu", "us", "au"] = "uk"
     provider_daily_budget: int = 80
     odds_daily_budget: int = 12
+    odds_monthly_budget: int = 450
     live_retention_approved: bool = False
     poll_seconds: int = 14400
     quote_max_age_seconds: int = 600

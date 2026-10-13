@@ -39,6 +39,7 @@ class Team(Identity, Base):
     __tablename__ = "teams"
     name: Mapped[str] = mapped_column(String(120))
     provider_id: Mapped[str] = mapped_column(String(80), unique=True)
+    crest_url: Mapped[str | None] = mapped_column(String(300), nullable=True)
 
 
 class Fixture(Identity, Base):

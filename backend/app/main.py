@@ -16,6 +16,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from .auth import admin_required, user_required
 from .auth import router as auth_router
 from .config import settings
+from .crests import team_logo
 from .db import get_db, now, utc
 from .evaluation import metrics
 from .matchday import router as matchday_router
@@ -203,6 +204,12 @@ def meta(db=Depends(get_db)):
     return {
         "mode": settings.app_data_mode,
         "model_version": VERSION,
+        "football_provider": settings.football_provider
+        if settings.app_data_mode == "live"
+        else "demo",
+        "feed_notice": "Delayed results · Daily recorded odds"
+        if settings.app_data_mode == "live" and settings.poll_seconds >= 86400
+        else "",
         "data_fetched_at": latest,
         "leagues": [
             {"id": c.id, "name": c.name, "season": c.season}
@@ -304,6 +311,9 @@ def detail(fixture_id: str, db=Depends(get_db)):
             "recent": [
                 {
                     "opponent": db.get(Team, x.away_id if x.home_id == team_id else x.home_id).name,
+                    "opponent_logo": team_logo(
+                        db.get(Team, x.away_id if x.home_id == team_id else x.home_id)
+                    ),
                     "score": f"{x.home_goals}–{x.away_goals}",
                     "kickoff": x.kickoff,
                     "result": "D"
@@ -345,6 +355,8 @@ def detail(fixture_id: str, db=Depends(get_db)):
         "id": f.id,
         "home": db.get(Team, f.home_id).name,
         "away": db.get(Team, f.away_id).name,
+        "home_logo": team_logo(db.get(Team, f.home_id)),
+        "away_logo": team_logo(db.get(Team, f.away_id)),
         "competition": db.get(Competition, f.competition_id).name,
         "kickoff": utc(f.kickoff),
         "status": "kickoff reached / awaiting feed"
@@ -372,6 +384,8 @@ def detail(fixture_id: str, db=Depends(get_db)):
             {
                 "home": db.get(Team, x.home_id).name,
                 "away": db.get(Team, x.away_id).name,
+                "home_logo": team_logo(db.get(Team, x.home_id)),
+                "away_logo": team_logo(db.get(Team, x.away_id)),
                 "score": f"{x.home_goals}–{x.away_goals}",
             }
             for x in h2h[:5]

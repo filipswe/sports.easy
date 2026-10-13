@@ -28,7 +28,8 @@ def tick():
                 db.commit()
                 slot = int(now().timestamp()) // max(60, settings.poll_seconds)
                 job = Job(
-                    key=f"{settings.app_data_mode}:{VERSION}:top5-24h-v2:{slot}", status="running"
+                    key=f"{settings.app_data_mode}:{settings.football_provider}:{VERSION}:top5-24h-v2:{slot}",
+                    status="running",
                 )
                 db.add(job)
                 try:

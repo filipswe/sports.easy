@@ -8,8 +8,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from .config import settings
+from .crests import team_logo
 from .db import get_db, now, utc
-from .leagues import BY_ID, CLUBS
+from .leagues import BY_ID
 from .models import Competition, Fixture, Prediction, Team
 from .picks import recommendation_rows
 from .reasons import pick_reason
@@ -19,14 +20,7 @@ router = APIRouter(prefix="/api", tags=["matchday"])
 
 
 def logo(team):
-    if team.name in CLUBS:
-        return "/clubs/" + CLUBS[team.name] + ".png"
-    provider_id = team.provider_id.removeprefix("api-football:")
-    return (
-        f"https://media.api-sports.io/football/teams/{provider_id}.png"
-        if provider_id.isdigit()
-        else None
-    )
+    return team_logo(team)
 
 
 def poisson(rate, n):
@@ -322,6 +316,8 @@ def analyze(body: ParlayInput, db=Depends(get_db)):
                 **pick,
                 "home": match["home"],
                 "away": match["away"],
+                "home_logo": match["home_logo"],
+                "away_logo": match["away_logo"],
                 "kickoff": match["kickoff"],
                 "user_odds": leg.user_odds,
             }
