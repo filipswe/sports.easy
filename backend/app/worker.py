@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from .config import settings
 from .db import SessionLocal, engine, now
 from .ingestion import ingest
+from .model import VERSION
 from .models import AuthSession, AuthToken, Job
 from .providers import ProviderUnavailable
 
@@ -25,7 +26,7 @@ def tick():
                 db.execute(delete(AuthSession).where(AuthSession.expires_at < now()))
                 db.commit()
                 slot = int(now().timestamp()) // max(60, settings.poll_seconds)
-                job = Job(key=f"{settings.app_data_mode}:{slot}", status="running")
+                job = Job(key=f"{settings.app_data_mode}:{VERSION}:{slot}", status="running")
                 db.add(job)
                 try:
                     db.commit()

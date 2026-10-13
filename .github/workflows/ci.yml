@@ -5,17 +5,18 @@ permissions:
 jobs:
   backend:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17.11-alpine
-        env:
-          POSTGRES_PASSWORD: ci-only-password
-          POSTGRES_USER: sports
-          POSTGRES_DB: sports_easy
-        ports: ['5432:5432']
-        options: --health-cmd 'pg_isready -U sports' --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Start isolated PostgreSQL
+        run: |
+          docker run --detach --name sports-easy-ci-db --publish 127.0.0.1:5432:5432 \
+            --env POSTGRES_PASSWORD=ci-only-password --env POSTGRES_USER=sports \
+            --env POSTGRES_DB=sports_easy postgres:17-alpine
+          for attempt in $(seq 1 30); do
+            if docker exec sports-easy-ci-db pg_isready -U sports -d sports_easy; then break; fi
+            sleep 1
+          done
+          docker exec sports-easy-ci-db pg_isready -U sports -d sports_easy
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
@@ -27,6 +28,9 @@ jobs:
         env:
           DATABASE_URL: postgresql+psycopg://sports:ci-only-password@localhost:5432/sports_easy
       - run: pip-audit -r backend/requirements.txt
+      - name: Remove test PostgreSQL
+        if: always()
+        run: docker rm --force sports-easy-ci-db
   web:
     runs-on: ubuntu-latest
     steps:
