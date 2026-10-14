@@ -44,7 +44,10 @@ export function Performance() {
     const load = () =>
       api<Performance>("/performance?page=" + page)
         .then((r) => {
-          if (active) setData(r);
+          if (active) {
+            setData(r);
+            setError("");
+          }
         })
         .catch((e) => {
           if (active) setError(e.message);

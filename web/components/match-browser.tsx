@@ -64,6 +64,7 @@ export function MatchBrowser() {
   const [input, setInput] = useState(search),
     [matches, setMatches] = useState<MatchRow[] | null>(null),
     [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
   const selectedMarket = market.startsWith("half_totals")
     ? `half_totals_${halfLine}`
     : market === "totals" && goalLine !== "2.5"
@@ -84,6 +85,7 @@ export function MatchBrowser() {
           }),
       );
       setMatches(result.items);
+      setError("");
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "Unable to load prices. Try again.",
@@ -122,10 +124,18 @@ export function MatchBrowser() {
     const fetchMatches = (refresh: boolean) =>
       load(refresh)
         .then((r) => {
-          if (active) setMatches(r.items);
+          if (active) {
+            setMatches(r.items);
+            setError("");
+          }
         })
         .catch((e) => {
-          if (active) setError(e.message);
+          if (active)
+            setError(
+              e instanceof TypeError
+                ? "Connection interrupted. Please try again."
+                : e.message,
+            );
         });
     fetchMatches(true);
     const interval = window.setInterval(() => {
@@ -135,7 +145,7 @@ export function MatchBrowser() {
       active = false;
       window.clearInterval(interval);
     };
-  }, [period, search, league, market, selectedMarket, meta?.mode]);
+  }, [period, search, league, market, selectedMarket, meta?.mode, retry]);
   const list = matches
     ? [...matches].sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff))
     : [];
@@ -266,7 +276,10 @@ export function MatchBrowser() {
             </span>
           </div>
           {error ? (
-            <ErrorBox message={error} />
+            <ErrorBox
+              message={error}
+              retry={() => setRetry((attempt) => attempt + 1)}
+            />
           ) : !matches ? (
             <Skeletons />
           ) : !list.length ? (

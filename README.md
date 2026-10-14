@@ -163,6 +163,7 @@ Remaining limits: uncalibrated probabilities, no archival historical odds ingest
 - **Node version error:** Next requires a modern runtime. `node --version` should be 24.x for this project. On the original workstation, `PATH=/usr/local/bin:$PATH npm …` selects it.
 - **Docker daemon unavailable:** start Docker Desktop, then `docker info`. Native SQLite mode is available without Docker.
 - **Port already in use:** stop your old process or change web/API ports, `API_INTERNAL_URL` and `PUBLIC_ORIGIN` together. Tests need 3100/8100.
+- **Connection interrupted:** keep the preview terminal running and click **Try again** on All matches. Open match, homepage and performance lists also recover on their next successful one-minute refresh; a temporary failure no longer leaves an old error on screen.
 - **Empty live results:** inspect `/admin`: credentials, retained-data approval, provider quota, identity mapping, requested line, season entitlement and minimum sample size can all prevent publication.
 - **No demo EV results:** source prices are older than ten minutes; this is expected, not fixed by page refresh. Disable EV/fresh-only filtering to inspect stale records.
 - **CSRF failure:** use exactly `PUBLIC_ORIGIN` in the browser. `localhost` and `127.0.0.1` are different origins. Cookies must be Secure only on HTTPS.

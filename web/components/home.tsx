@@ -22,7 +22,10 @@ export function Home() {
     const load = () =>
       api<{ items: Selection[] }>("/recommendations")
         .then((r) => {
-          if (active) setItems(r.items);
+          if (active) {
+            setItems(r.items);
+            setError("");
+          }
         })
         .catch((e) => {
           if (active) setError(e.message);
