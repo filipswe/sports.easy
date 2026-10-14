@@ -24,9 +24,10 @@ def eligible_rows(db, fresh_only=False):
     }
     return [
         r
-        for r in current_quotes(db)
+        for r in current_quotes(db, markets_filter=("1x2", "btts", "totals"))
         if r["competition_id"] in competitions
         and r["probability"] is not None
+        and r["market"] in {"1x2", "btts", "totals"}
         and (not fresh_only or r["mode"] == "demo" or not r["stale"])
     ]
 

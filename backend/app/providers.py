@@ -471,6 +471,48 @@ class DemoOdds:
                         ],
                     }
                 )
+                if name == "Demo Sportsbook" and i % 276 in {264, 265, 266}:
+                    # A bounded sample of expanded prices, independent of model probabilities.
+                    books[-1]["markets"].extend(
+                        [
+                            {
+                                "key": "alternate_totals",
+                                "outcomes": [
+                                    {"name": side, "point": line, "price": prices[index]}
+                                    for line, prices in [
+                                        (0.5, (1.12, 7.2)),
+                                        (1.5, (1.38, 2.95)),
+                                        (3.5, (2.6, 1.49)),
+                                        (4.5, (4.4, 1.2)),
+                                    ]
+                                    for index, side in enumerate(("Over", "Under"))
+                                ],
+                            },
+                            {
+                                "key": "alternate_totals_h1",
+                                "outcomes": [
+                                    {"name": side, "point": line, "price": prices[index]}
+                                    for line, prices in [
+                                        (0.5, (1.42, 2.9)),
+                                        (1.5, (2.85, 1.45)),
+                                        (2.5, (5.1, 1.16)),
+                                    ]
+                                    for index, side in enumerate(("Over", "Under"))
+                                ],
+                            },
+                            {
+                                "key": "double_chance",
+                                "outcomes": [
+                                    {"name": f["home"]["name"] + " or Draw", "price": 1.36},
+                                    {"name": f["away"]["name"] + " or Draw", "price": 1.67},
+                                    {
+                                        "name": f["home"]["name"] + " or " + f["away"]["name"],
+                                        "price": 1.29,
+                                    },
+                                ],
+                            },
+                        ]
+                    )
             events.append(
                 {
                     "id": f["id"],

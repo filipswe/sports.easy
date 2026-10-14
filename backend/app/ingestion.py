@@ -1,5 +1,5 @@
 from datetime import timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from sqlalchemy import select
 
@@ -7,7 +7,7 @@ from .config import settings
 from .crests import safe_crest
 from .db import now, utc
 from .leagues import BY_SPORT, EUROPEAN_COMPETITIONS, LEAGUES
-from .model import VERSION, outcome_won, predict
+from .model import VERSION, market_probabilities, outcome_won, predict
 from .models import (
     Bookmaker,
     Competition,
@@ -341,12 +341,17 @@ def ingest(db):
         quote = db.get(Quote, row["quote_id"])
         prediction = db.scalar(
             select(Prediction)
-            .where(Prediction.fixture_id == quote.fixture_id)
+            .where(Prediction.fixture_id == quote.fixture_id, Prediction.mode == mode)
             .order_by(Prediction.generated_at.desc())
         )
-        if prediction and not db.scalar(
-            select(Publication.id).where(
-                Publication.prediction_id == prediction.id, Publication.quote_id == quote.id
+        if (
+            prediction
+            and utc(prediction.fixture_kickoff) == utc(db.get(Fixture, quote.fixture_id).kickoff)
+            and quote.outcome in market_probabilities(prediction, quote.market)
+            and not db.scalar(
+                select(Publication.id).where(
+                    Publication.prediction_id == prediction.id, Publication.quote_id == quote.id
+                )
             )
         ):
             db.add(Publication(prediction_id=prediction.id, quote_id=quote.id))
@@ -406,6 +411,39 @@ def store_odds(db, events, fetched=None, observed=False):
         ):
             rejected += 1
             continue
+        if mode == "live":
+            home_team, away_team = db.get(Team, fixture.home_id), db.get(Team, fixture.away_id)
+
+            def side_matches(team, name):
+                return team.name.casefold() == name.casefold() or team.id in {
+                    names.get(name.casefold()),
+                    aliases.get(name.casefold()),
+                }
+
+            if not side_matches(home_team, event["home_team"]) or not side_matches(
+                away_team, event["away_team"]
+            ):
+                rejected += 1
+                continue
+            mapping = db.scalar(
+                select(ProviderMapping).where(
+                    ProviderMapping.provider == "the-odds-api",
+                    ProviderMapping.entity_type == "fixture",
+                    ProviderMapping.external_id == event["id"],
+                )
+            )
+            if mapping and mapping.entity_id != fixture.id:
+                rejected += 1
+                continue
+            if mapping is None:
+                db.add(
+                    ProviderMapping(
+                        provider="the-odds-api",
+                        entity_type="fixture",
+                        external_id=event["id"],
+                        entity_id=fixture.id,
+                    )
+                )
         for book in event.get("bookmakers", []):
             key = f"{mode}:{settings.odds_region}:{book['key']}"
             bookmaker = db.scalar(select(Bookmaker).where(Bookmaker.provider_id == key))
@@ -416,8 +454,17 @@ def store_odds(db, events, fetched=None, observed=False):
                 db.add(bookmaker)
                 db.flush()
             for market in book.get("markets", []):
-                kind = {"h2h": "1x2", "totals": "totals", "btts": "btts"}.get(market["key"])
-                if not kind or (mode == "live" and kind == "btts"):
+                kind = {
+                    "h2h": "1x2",
+                    "h2h_3_way": "1x2",
+                    "totals": "totals",
+                    "alternate_totals": "totals",
+                    "btts": "btts",
+                    "double_chance": "double_chance",
+                    "totals_h1": "half_totals",
+                    "alternate_totals_h1": "half_totals",
+                }.get(market["key"])
+                if not kind:
                     continue
                 updated = market.get("last_update") or book.get("last_update")
                 stamp = parse_time(updated) if updated else None
@@ -425,8 +472,14 @@ def store_odds(db, events, fetched=None, observed=False):
                     continue
                 snapshot = fingerprint([event["id"], book["key"], market, updated])
                 for outcome in market["outcomes"]:
-                    if kind == "totals" and outcome.get("point") != 2.5:
-                        continue
+                    quote_kind = kind
+                    if kind in {"totals", "half_totals"}:
+                        point = outcome.get("point")
+                        if point not in {n + 0.5 for n in range(10)}:
+                            continue  # Integer/Asian lines need push/partial-win settlement.
+                        quote_kind = (
+                            "totals" if kind == "totals" and point == 2.5 else f"{kind}_{point:g}"
+                        )
                     selection = {
                         event["home_team"]: "home",
                         event["away_team"]: "away",
@@ -436,15 +489,36 @@ def store_odds(db, events, fetched=None, observed=False):
                         "Yes": "yes",
                         "No": "no",
                     }.get(outcome["name"])
-                    price = Decimal(str(outcome["price"]))
-                    if not selection or not price.is_finite() or not 1 < price <= 1000:
+                    if kind == "double_chance":
+                        combinations = {
+                            frozenset((event["home_team"], "Draw")): "1x",
+                            frozenset((event["away_team"], "Draw")): "x2",
+                            frozenset((event["home_team"], event["away_team"])): "12",
+                        }
+                        selection = combinations.get(frozenset(outcome["name"].split(" or ")))
+                    allowed = {
+                        "1x2": {"home", "draw", "away"},
+                        "totals": {"over", "under"},
+                        "half_totals": {"over", "under"},
+                        "btts": {"yes", "no"},
+                        "double_chance": {"1x", "x2", "12"},
+                    }
+                    try:
+                        price = Decimal(str(outcome["price"]))
+                    except (InvalidOperation, KeyError, ValueError):
+                        continue
+                    if (
+                        selection not in allowed[kind]
+                        or not price.is_finite()
+                        or not 1 < price <= 1000
+                    ):
                         continue
                     quote = db.scalar(
                         select(Quote).where(
                             Quote.fixture_id == fixture.id,
                             Quote.bookmaker_id == bookmaker.id,
                             Quote.snapshot_key == snapshot,
-                            Quote.market == kind,
+                            Quote.market == quote_kind,
                             Quote.outcome == selection,
                         )
                     )
@@ -452,7 +526,7 @@ def store_odds(db, events, fetched=None, observed=False):
                         quote = Quote(
                             fixture_id=fixture.id,
                             bookmaker_id=bookmaker.id,
-                            market=kind,
+                            market=quote_kind,
                             outcome=selection,
                             price=price,
                             snapshot_key=snapshot,
@@ -477,10 +551,15 @@ def store_odds(db, events, fetched=None, observed=False):
                         )
                     prediction = db.scalar(
                         select(Prediction)
-                        .where(Prediction.fixture_id == fixture.id)
+                        .where(Prediction.fixture_id == fixture.id, Prediction.mode == mode)
                         .order_by(Prediction.generated_at.desc())
                     )
-                    if prediction and utc(prediction.generated_at) < utc(fixture.kickoff):
+                    if (
+                        prediction
+                        and utc(prediction.fixture_kickoff) == utc(fixture.kickoff)
+                        and selection in market_probabilities(prediction, quote_kind)
+                        and utc(prediction.generated_at) < utc(fixture.kickoff)
+                    ):
                         exists = db.scalar(
                             select(Publication.id).where(
                                 Publication.prediction_id == prediction.id,
@@ -505,11 +584,12 @@ def settle(db):
             and fixture.home_goals is not None
             and fixture.away_goals is not None
         ):
-            result = (
-                "won"
-                if outcome_won(quote.market, quote.outcome, fixture.home_goals, fixture.away_goals)
-                else "lost"
-            )
+            home, away = fixture.home_goals, fixture.away_goals
+            if quote.market.startswith("half_"):
+                if fixture.home_half_goals is None or fixture.away_half_goals is None:
+                    continue
+                home, away = fixture.home_half_goals, fixture.away_half_goals
+            result = "won" if outcome_won(quote.market, quote.outcome, home, away) else "lost"
             reason = (
                 "Verified provider regulation-time result"
                 if fixture.mode == "live"
@@ -525,6 +605,8 @@ def settle(db):
         else:
             continue
         signature = f"{fixture.status}:{fixture.home_goals}:{fixture.away_goals}"
+        if quote.market.startswith("half_"):
+            signature += f":half:{fixture.home_half_goals}:{fixture.away_half_goals}"
         previous = db.scalar(
             select(Settlement)
             .where(Settlement.publication_id == pub.id)

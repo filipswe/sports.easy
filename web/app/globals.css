@@ -3300,3 +3300,19 @@ footer p {
     padding: 20px;
   }
 }
+
+.goal-line-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.goal-line-control select {
+  padding: 9px 30px 9px 12px;
+  border: 1px solid var(--border);
+  background: white;
+  border-radius: 8px;
+  color: var(--text);
+}

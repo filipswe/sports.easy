@@ -201,7 +201,7 @@ def test_live_adapter_contract_reuses_quotes_for_new_prediction_versions(db, mon
     monkeypatch.setattr(settings, "odds_bookmaker_key", "demo-exchange")
     ingest(db)
     quote_count = db.scalar(select(func.count()).select_from(Quote).where(Quote.mode == "live"))
-    assert quote_count == 120  # BTTS intentionally absent from live adapter coverage.
+    assert quote_count == 219  # Core markets plus the bounded sample of imported extended prices.
     old = db.scalar(select(Prediction).where(Prediction.mode == "live"))
     revision = Prediction(
         fixture_id=old.fixture_id,
@@ -228,6 +228,6 @@ def test_live_adapter_contract_reuses_quotes_for_new_prediction_versions(db, mon
             .select_from(Publication)
             .where(Publication.prediction_id == revision.id)
         )
-        == 5  # Only current, usable quotes from the configured bookmaker are rebound.
+        == 7  # Includes the configured bookmaker's BTTS selections.
     )
     assert db.scalar(select(Publication).where(Publication.prediction_id == old.id)) is not None

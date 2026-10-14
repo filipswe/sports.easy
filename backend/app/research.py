@@ -9,7 +9,7 @@ from sqlalchemy.orm import aliased
 from .config import settings
 from .crests import team_logo
 from .db import now, utc
-from .model import likelihood, value
+from .model import likelihood, market_probabilities, value
 from .models import (
     Bookmaker,
     Competition,
@@ -83,7 +83,8 @@ def recorded_price_usable(row):
 
 
 def publication_row(db, pub, prediction, quote, fixture, book, home, away, competition):
-    p = prediction.probabilities[quote.market][quote.outcome]
+    probabilities = market_probabilities(prediction, quote.market)
+    p = probabilities[quote.outcome]
     stale = quote_stale(quote)
     return {
         "id": pub.id,
@@ -129,7 +130,7 @@ def publication_row(db, pub, prediction, quote, fixture, book, home, away, compe
             p,
             home.name,
             away.name,
-            prediction.probabilities[quote.market],
+            probabilities,
         ),
         "reason": pick_reason(
             prediction,
@@ -138,7 +139,7 @@ def publication_row(db, pub, prediction, quote, fixture, book, home, away, compe
             p,
             home.name,
             away.name,
-            prediction.probabilities[quote.market],
+            probabilities,
         )["summary"],
     }
 

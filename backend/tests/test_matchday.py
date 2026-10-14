@@ -130,7 +130,7 @@ def test_reject_correlated_invalid_and_started_legs(client, db):
 
 def test_unquoted_picks_are_analyzable_without_fake_prices(client):
     legs = [
-        {**leg, "market": "half_totals_0.5", "outcome": "over"} for leg in independent_legs(client)
+        {**leg, "market": "correct_score", "outcome": "1-0"} for leg in independent_legs(client)
     ]
     response = mutate(client, "/api/parlays/analyze", {"legs": legs})
     assert response.status_code == 200

@@ -10,6 +10,7 @@ import {
   CalendarDays,
 } from "lucide-react";
 import { api, pct } from "@/lib/api";
+import { refreshPrices } from "@/lib/prices";
 import { MatchRow, Pick, pickKey, pickLabel, withMatch } from "@/lib/matchday";
 import { useParlay } from "./parlay-context";
 import { useApp } from "./shell";
@@ -27,7 +28,7 @@ export function OutcomeButton({
   const label =
     short && pick.market === "1x2"
       ? { home: "1", draw: "X", away: "2" }[pick.outcome] || pick.outcome
-      : short && ["totals", "btts"].includes(pick.market)
+      : short && (pick.market.startsWith("totals") || pick.market === "btts")
         ? { over: "Over", under: "Under", yes: "Yes", no: "No" }[
             pick.outcome
           ] || pick.outcome
@@ -37,13 +38,13 @@ export function OutcomeButton({
       className={`outcome ${selected ? "is-selected" : ""}`}
       onClick={() => toggle(pick)}
       aria-pressed={selected}
-      aria-label={`${pickLabel(pick)}, ${pct(pick.probability)} model chance${pick.odds ? `, odds ${pick.odds.toFixed(2)}` : ""}`}
+      aria-label={`${pickLabel(pick)}${pick.probability !== null ? `, ${pct(pick.probability)} model chance` : ""}${pick.odds ? `, odds ${pick.odds.toFixed(2)}` : ""}`}
     >
       <span>
         {selected && <Check size={12} />} {label}
       </span>
       <b>{pick.odds?.toFixed(2) || "—"}</b>
-      <small>{pct(pick.probability)}</small>
+      {pick.probability !== null && <small>{pct(pick.probability)}</small>}
     </button>
   );
 }
@@ -54,10 +55,36 @@ export function MatchBrowser() {
   const period = params.get("period") || "week",
     search = params.get("team") || "",
     market = params.get("market") || "1x2",
+    goalLine = params.get("line") || "2.5",
     league = params.get("league") || "";
   const [input, setInput] = useState(search),
     [matches, setMatches] = useState<MatchRow[] | null>(null),
     [error, setError] = useState("");
+  const selectedMarket =
+    market === "totals" && goalLine !== "2.5" ? `totals_${goalLine}` : market;
+  const [loadingMore, setLoadingMore] = useState(false);
+  async function loadMore() {
+    setLoadingMore(true);
+    try {
+      await refreshPrices({ period, team: search, league, more: true });
+      const result = await api<{ items: MatchRow[] }>(
+        "/matchday?" +
+          new URLSearchParams({
+            period,
+            team: search,
+            league,
+            market: selectedMarket,
+          }),
+      );
+      setMatches(result.items);
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Unable to load prices. Try again.",
+      );
+    } finally {
+      setLoadingMore(false);
+    }
+  }
   function update(key: string, value: string) {
     const q = new URLSearchParams(params);
     if (value) q.set(key, value);
@@ -71,10 +98,20 @@ export function MatchBrowser() {
     let active = true;
     setError("");
     setMatches(null);
-    api<{ items: MatchRow[] }>(
-      "/matchday?" +
-        new URLSearchParams({ period, team: search, league, market }),
-    )
+    (async () => {
+      if (meta?.mode === "live" && market !== "1x2") {
+        await refreshPrices({ period, team: search, league });
+      }
+      return api<{ items: MatchRow[] }>(
+        "/matchday?" +
+          new URLSearchParams({
+            period,
+            team: search,
+            league,
+            market: selectedMarket,
+          }),
+      );
+    })()
       .then((r) => {
         if (active) setMatches(r.items);
       })
@@ -84,7 +121,7 @@ export function MatchBrowser() {
     return () => {
       active = false;
     };
-  }, [period, search, league, market]);
+  }, [period, search, league, market, selectedMarket, meta?.mode]);
   const list = matches
     ? [...matches].sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff))
     : [];
@@ -161,7 +198,7 @@ export function MatchBrowser() {
             {[
               ["1x2", "1X2"],
               ["btts", "BTTS"],
-              ["totals", "Over/under 2.5"],
+              ["totals", "Under/over goals"],
               ["half_totals_0.5", "First-half goals"],
               ["double_chance", "Double chance"],
             ].map(([v, l]) => (
@@ -174,6 +211,23 @@ export function MatchBrowser() {
               </button>
             ))}
           </div>
+          {market === "totals" && (
+            <label className="goal-line-control">
+              Goal line
+              <select
+                value={goalLine}
+                onChange={(e) => update("line", e.target.value)}
+              >
+                {Array.from({ length: 10 }, (_, n) => `${n + 0.5}`).map(
+                  (line) => (
+                    <option key={line} value={line}>
+                      {line} goals
+                    </option>
+                  ),
+                )}
+              </select>
+            </label>
+          )}
           <div className="list-caption">
             <span>
               {matches
@@ -202,7 +256,7 @@ export function MatchBrowser() {
           ) : (
             <div className="match-list">
               {list.map((m, i) => {
-                const group = m.markets.find((g) => g.key === market),
+                const group = m.markets.find((g) => g.key === selectedMarket),
                   day = new Date(m.kickoff).toLocaleDateString("en-GB", {
                     weekday: "short",
                     day: "numeric",
@@ -275,6 +329,17 @@ export function MatchBrowser() {
             A dash means no price is available. Tap a team for form, stats and
             all markets.
           </p>
+          {meta?.mode === "live" && market !== "1x2" && (
+            <button
+              className="button secondary"
+              onClick={loadMore}
+              disabled={!matches || loadingMore}
+            >
+              {loadingMore
+                ? "Finding current prices…"
+                : "Find more priced matches"}
+            </button>
+          )}
         </div>
         <ParlayPanel />
       </div>

@@ -152,7 +152,7 @@ def main():
         NEXT_TELEMETRY_DISABLED="1",
         SMTP_HOST="",
         GROQ_API_KEY=env.get("GROQ_API_KEY", "") if args.ai else "",
-        ODDS_DAILY_BUDGET="20",
+        ODDS_DAILY_BUDGET="64",
         ODDS_POLL_SECONDS="259200",
         POLL_SECONDS="86400",
         PATH="/usr/local/bin:" + os.environ.get("PATH", ""),

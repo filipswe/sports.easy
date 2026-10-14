@@ -1,5 +1,6 @@
+from app.models import Quote
 from app.research import all_rows
-from sqlalchemy import event
+from sqlalchemy import event, select
 
 
 def test_match_listing_uses_bounded_queries_and_small_selector_payload(client, db):
@@ -36,9 +37,10 @@ def test_publication_rows_load_teams_and_competition_in_one_query(db):
     def count(conn, cursor, statement, parameters, context, executemany):
         statements.append(statement)
 
+    core_ids = list(db.scalars(select(Quote.id).where(Quote.market.in_(["1x2", "totals", "btts"]))))
     event.listen(db.bind, "before_cursor_execute", count)
     try:
-        rows = all_rows(db)
+        rows = all_rows(db, quote_ids=core_ids)
         assert len(rows) == 840
         assert len(statements) == 1
         assert all(row["home"] and row["away"] and row["competition"] for row in rows)

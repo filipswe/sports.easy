@@ -162,10 +162,12 @@ export function ParlayPanel({ full = false }: { full?: boolean }) {
                 {busy ? "…" : analysis?.combined_odds?.toFixed(2) || "—"}
               </strong>
             </div>
-            <div>
-              <span>Estimated chance · all win</span>
-              <b>{busy ? "…" : chance !== undefined ? pct(chance) : "—"}</b>
-            </div>
+            {chance != null && (
+              <div>
+                <span>Estimated chance · all win</span>
+                <b>{busy ? "…" : chance !== undefined ? pct(chance) : "—"}</b>
+              </div>
+            )}
             {chance != null && (
               <div className="probability-track">
                 <span style={{ width: pct(chance) }} />
@@ -174,7 +176,7 @@ export function ParlayPanel({ full = false }: { full?: boolean }) {
             {analysis && (
               <p>
                 {analysis.probability === null
-                  ? "Model confidence is unavailable for one or more picks. "
+                  ? "These picks don't all have a model estimate yet. "
                   : ""}
                 {analysis.mode === "demo"
                   ? "Sample prices"

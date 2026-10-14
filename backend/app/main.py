@@ -37,6 +37,7 @@ from .models import (
     Team,
 )
 from .picks import recommendation_rows
+from .price_refresh import router as price_router
 from .readiness import release_blockers
 from .research import Filters, all_rows, quote_stale, require_fixture, search
 
@@ -84,6 +85,7 @@ app = FastAPI(
 app.include_router(auth_router)
 app.include_router(matchday_router)
 app.include_router(chat_router)
+app.include_router(price_router)
 requests_by_ip = defaultdict(deque)
 
 
@@ -242,7 +244,7 @@ def meta(db=Depends(get_db)):
         ],
         "markets": ["1x2", "totals", "btts"]
         if settings.app_data_mode == "demo"
-        else ["1x2", "totals"],
+        else ["1x2", "totals", "btts", "double_chance", "half_totals"],
         "region": settings.odds_region,
         "freshness_seconds": settings.quote_max_age_seconds,
         "regional_notice": settings.regional_notice,

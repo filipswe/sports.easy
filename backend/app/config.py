@@ -23,7 +23,8 @@ class Settings(BaseSettings):
     odds_sport: str = "soccer_epl"
     odds_region: Literal["uk", "eu", "us", "au"] = "uk"
     provider_daily_budget: int = 80
-    odds_daily_budget: int = 20
+    odds_daily_budget: int = 64
+    odds_event_daily_budget: int = 32
     odds_monthly_budget: int = 450
     live_retention_approved: bool = False
     poll_seconds: int = 14400

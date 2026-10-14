@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Sparkles, Bookmark, Check } from "lucide-react";
 import { api, pct, stamp } from "@/lib/api";
+import { refreshPrices } from "@/lib/prices";
 import { MatchRow, Pick, pickLabel, withMatch } from "@/lib/matchday";
 import { ErrorBox, TeamBadge, Skeletons } from "./ui";
 import { ParlayPanel } from "./parlay-panel";
@@ -117,13 +118,16 @@ export function MatchDetail({ id }: { id: string }) {
     [saved, setSaved] = useState(false),
     [saveError, setSaveError] = useState("");
   const { picks } = useParlay(),
-    { user } = useApp();
+    { user, meta } = useApp();
   useEffect(() => {
     let active = true;
-    Promise.all([
-      api<MatchRow>("/matchday/" + id),
-      api<Detail>("/fixtures/" + id),
-    ])
+    (async () => {
+      if (meta?.mode === "live") await refreshPrices({ fixture_id: id });
+      return Promise.all([
+        api<MatchRow>("/matchday/" + id),
+        api<Detail>("/fixtures/" + id),
+      ]);
+    })()
       .then(([m, d]) => {
         if (active) {
           setMatch(m);
@@ -136,7 +140,7 @@ export function MatchDetail({ id }: { id: string }) {
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id, meta?.mode]);
   useEffect(() => {
     const selected = picks.find((p) => p.fixture_id === id);
     setFocus(selected || null);
@@ -246,10 +250,12 @@ export function MatchDetail({ id }: { id: string }) {
                 {chosen && (
                   <>
                     <div className="insight-values">
-                      <div>
-                        <strong>{pct(chosen.probability)}</strong>
-                        <span>Estimated chance</span>
-                      </div>
+                      {chosen.probability !== null && (
+                        <div>
+                          <strong>{pct(chosen.probability)}</strong>
+                          <span>Estimated chance</span>
+                        </div>
+                      )}
                       <div>
                         <strong>{chosen.odds?.toFixed(2) || "—"}</strong>
                         <span>
@@ -258,16 +264,18 @@ export function MatchDetail({ id }: { id: string }) {
                             : "Current odds"}
                         </span>
                       </div>
-                      <div>
-                        <strong>
-                          {pct(
-                            chosen.probability === null
-                              ? null
-                              : 1 - chosen.probability,
-                          )}
-                        </strong>
-                        <span>Chance it loses</span>
-                      </div>
+                      {chosen.probability !== null && (
+                        <div>
+                          <strong>
+                            {pct(
+                              chosen.probability === null
+                                ? null
+                                : 1 - chosen.probability,
+                            )}
+                          </strong>
+                          <span>Chance it loses</span>
+                        </div>
+                      )}
                     </div>
                     {chosen.analysis && (
                       <section
