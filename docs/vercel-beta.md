@@ -8,15 +8,15 @@ This is the approved **free, non-commercial beta** hosting plan. The application
 2. [Neon](https://console.neon.tech/signup), using Free PostgreSQL. Create a separate beta project in **AWS Europe Central 1 (Frankfurt)**; both Vercel projects are configured for matching region `fra1`. Enable only Postgres; object storage, Functions, AI gateway and Neon Auth are unnecessary for this application. Use the **direct** TLS connection for the API and worker, because the existing worker uses session-level advisory locks. Plain `postgresql://` provider URIs are accepted and normalized to the installed Psycopg driver internally. Copy the URI, not a complete `psql` command, and keep it private.
 3. An email sender and support inbox. A dedicated Gmail account with two-step verification and an app password can support a small beta if that account permits app passwords. Use `smtp.gmail.com`, port 587, STARTTLS, the account address as `SMTP_USER`/`SMTP_FROM`, and the app password as `SMTP_PASSWORD`. Google applies sender limits; real delivery must be verified. A verified sending domain and dedicated transactional service are preferable when moving beyond the beta.
 
-“Operator name” identifies the person or business running the site; sports.easy is the product brand. The owner must choose the public operator identity and contact address. Blank values remain launch blockers. Product legal pages are drafts and do not establish an operator's legal status.
+“Operator name” identifies the person or business running the site; sports.easy is the product brand. The owner selected `sports easy` as the public operator display name. Product legal pages are drafts and do not establish an operator's legal status.
 
 ## Private configuration
 
-Use ignored `.env.beta`, based on `.env.beta.example`. It is separate from the running local `.env`. The prepared local file contains a newly generated session secret, privately copied provider keys and the new Neon application connection. The canonical website origin, Gmail app password and operator identity remain unconfigured. No credentials are committed.
+Use ignored `.env.beta`, based on `.env.beta.example`. It is separate from the running local `.env`. The prepared local file contains a newly generated session secret, privately copied provider keys, the new Neon application connection and configured operator/email settings. The canonical website origin remains unconfigured. No credentials are committed.
 
 The newly created Neon database has been initialized through `007_observations`. A restricted `sports_easy_beta_app` role is configured privately as `DATABASE_URL`; it can use application tables but cannot create schema objects or update the migration revision. Owner credentials are retained only as local `MIGRATION_DATABASE_URL`. Do not copy the migration credential to Vercel or the refresh runner. Future migrations use that owner credential privately; application hosts use the restricted role.
 
-The chosen public support address is `sportseasycontact@gmail.com`. Proposed Gmail sender settings are saved privately; its app password, operator identity and canonical hosted origin are still required. No email has been sent.
+The chosen public support address is `sportseasycontact@gmail.com`. Gmail sender settings and the app password are saved privately. SMTP authentication passed with certificate-verified STARTTLS on 14 October 2026. This checks account access only; actual verification/reset delivery still requires a separate test. No email has been sent.
 
 Run from the repository root:
 
