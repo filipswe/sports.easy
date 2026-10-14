@@ -13,7 +13,7 @@ Sources: [football-data.org pricing](https://www.football-data.org/pricing), [co
 
 ## Refreshes and quota
 
-Free settings use `POLL_SECONDS=86400`, `ODDS_POLL_SECONDS=259200`, `ODDS_DAILY_BUDGET=64`, `ODDS_EVENT_DAILY_BUDGET=32` and a UTC calendar-month odds budget of 450. Each eight-competition base sweep reserves 16 credits, approximately 160–176/month. A detail request reserves up to four credits per event, caches for three days and serves batches of up to six. Detail requests, retries and verification calls use the remaining allowance. Reservations persist before requests and failed attempts count conservatively. The provider's own billing reset can differ from the calendar guard.
+Free settings use `POLL_SECONDS=14400`, `ODDS_POLL_SECONDS=259200`, `ODDS_DAILY_BUDGET=64`, `ODDS_EVENT_DAILY_BUDGET=32` and a UTC calendar-month odds budget of 450. Each eight-competition base sweep reserves 16 credits, approximately 160–176/month. A detail request reserves up to five credits per event, caches for three days and serves batches of up to six. Detail requests, retries and verification calls use the remaining allowance. Reservations persist before requests and failed attempts count conservatively. The provider's own billing reset can differ from the calendar guard.
 
 Football requests reserve 10 calls for two seasons across five leagues; the adapter caps itself at ten requests per minute. No current-season access is assumed from a valid key. Earlier history can be unavailable on an account, so the model needs sufficient accessible results before offering a pick.
 

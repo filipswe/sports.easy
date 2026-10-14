@@ -17,6 +17,7 @@ export type Selection = {
   bookmaker_id: string;
   region: string;
   probability: number;
+  probability_basis?: string;
   likelihood: string;
   failure_probability: number;
   estimated_ev: number;

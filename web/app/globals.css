@@ -3316,3 +3316,8 @@ footer p {
   border-radius: 8px;
   color: var(--text);
 }
+
+.fixture-outcomes { display: flex; flex-direction: column; gap: 8px; }
+.fixture-line { display: flex; gap: 6px; width: 100%; }
+.fixture-line .outcome { flex: 1; min-width: 0; }
+.fixture-outcomes.all-goal-lines { max-height: 320px; overflow-y: auto; padding-right: 3px; }

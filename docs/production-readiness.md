@@ -18,13 +18,13 @@ For actual data and Groq answers, with credentials already in ignored `.env`:
 .venv/bin/python scripts/preview.py --live --ai
 ```
 
-This uses the separate ignored `.preview/live-football-data.db` (or API-Football equivalent). It migrates only that preview database, reuses successful fixture refreshes for 24 hours, and retains the three-day odds schedule. Each initial eight-competition odds sweep costs 16 provider credits, with retry reservations subject to daily/monthly limits. Three European `/events` calls use a separate free request ledger. The preview does not start a polling worker. Live restarts reuse the cache rather than spending a new sweep every time. A provider quota/outage keeps the preview available with stored data and hides expired/unpriced matches. It never substitutes sample data in live mode.
+This uses the separate ignored `.preview/live-football-data.db` (or API-Football equivalent). It migrates only that preview database, reuses successful fixture refreshes for four hours, and retains the three-day odds schedule. Each initial eight-competition odds sweep costs 16 provider credits, with retry reservations subject to daily/monthly limits. Three European `/events` calls use a separate free request ledger. The preview starts an isolated worker and defaults to a production Next build; use `--dev` for hot reload. Live restarts reuse the cache rather than spending a new sweep every time. A provider quota/outage keeps the preview available with stored data and hides expired/unpriced matches. It never substitutes sample data in live mode.
 
 ## New behavior
 
 Live All matches lists only scheduled future matches with supported prices from the configured bookmaker, verified within a maximum three-day cache. Unquoted outcomes are hidden in live views; missing model percentages are omitted. The most recent successful sweep supersedes unavailable prices; old snapshots remain immutable. Recommendations use current prices on upcoming cards; Performance retains the original recommended odds.
 
-Champions League, Europa League and Conference League fixtures appear only within the next 14 days and when priced. The free European event adapter supplies no verified regulation-time history: these matches show real prices, omitted model percentages and an honest explanation when asked for a model assessment. They can be combined in custom parlays, with combined odds but no fabricated combined probability. They are excluded from model suggestions and the domestic recommended shortlist. All 63 clubs missing from the current European catalog now have reviewed cached crests. Future unknown clubs use bounded optional metadata lookup; ambiguous identities are not guessed.
+Champions League, Europa League and Conference League fixtures appear only within the next 14 days and when priced. The free European event adapter supplies no verified regulation-time history: these matches receive a separately versioned, labelled market baseline from complete real 1X2 prices with the bookmaker margin removed. They enter the earliest matchday shortlist. Unsupported estimates stay absent; verified-history estimates take precedence when present. All 63 clubs missing from the current European catalog now have reviewed cached crests. Future unknown clubs use bounded optional metadata lookup; ambiguous identities are not guessed.
 
 Domestic model suggestions preserve multiplication of independent-match probabilities. “More likely to win than lose” appears only above 50%. Other suggestions rank available estimates within the requested price range. No percentages are inflated, calibrated certainty is not claimed, and no bets are placed.
 
@@ -32,7 +32,7 @@ Homepage chat uses Groq to select relevant verified evidence. Only the stored ex
 
 ## Configuration and deployment review
 
-`ODDS_POLL_SECONDS=259200` refreshes odds every three days; `POLL_SECONDS=86400` refreshes domestic results and European event availability daily. Use `ODDS_DAILY_BUDGET=64`, `ODDS_EVENT_DAILY_BUDGET=32` for all eight competitions and retain `ODDS_MONTHLY_BUDGET=450`. Normal eight-competition sweeps use approximately 160–176 credits/month. Cached on-demand detailed markets cost up to four per event; retries consume budget too. The shared 450-credit monthly cap means expanded coverage is limited on the free plan. A 12-credit budget cannot complete a 16-credit sweep. The quotes are cached bookmaker prices and may differ when a user visits the sportsbook.
+`ODDS_POLL_SECONDS=259200` refreshes odds every three days; `POLL_SECONDS=14400` refreshes domestic results and European event availability every four hours. Use `ODDS_DAILY_BUDGET=64`, `ODDS_EVENT_DAILY_BUDGET=32` for all eight competitions and retain `ODDS_MONTHLY_BUDGET=450`. Normal eight-competition sweeps use approximately 160–176 credits/month. Cached on-demand detailed markets cost up to five per event; retries consume budget too. The shared 450-credit monthly cap means expanded coverage is limited on the free plan. A 12-credit budget cannot complete a 16-credit sweep. The quotes are cached bookmaker prices and may differ when a user visits the sportsbook.
 
 Optional chat uses `GROQ_API_KEY`, `GROQ_MODEL=openai/gpt-oss-20b`, `CHAT_DAILY_BUDGET=32`. Atomic database counters reserve one global AI call per minute, up to the daily budget, and five per visitor per hour. These conservative free-plan defaults protect shared quota; all additional requests still receive data-backed answers. No API key is exposed to the browser. Keep keys out of Git and rotate credentials through provider dashboards when needed.
 
@@ -57,7 +57,7 @@ No merge, deployment, paid subscription or main-database migration is part of th
 
 1. Pick watchlist with opt-in reminders before kickoff, using existing verified accounts.
 2. Calibration reporting by league/market after sufficient prospective settled picks accumulate.
-3. Licensed European match history, then supported cup recommendations.
+3. Licensed European history and regulation-aware results beyond the reviewed league-phase dates.
 4. Price movement notifications with a faster feed only when quota and user demand justify it.
 5. An opt-in daily shortlist digest and localized explanations; no unsolicited messages.
 
@@ -66,3 +66,15 @@ Keep real data quality and a clear match/pick flow ahead of adding more panels.
 ## If port 3101 does not open
 
 The preview is a local process, so keep its terminal open until finished. Start it with the command above and wait for `Preview ready`. Port 3000 remains the older Docker installation until an approved update. If ports 3101/8101 are occupied, use the running preview or stop that specific process first. A separate Next development server for this same checkout must also be stopped before preview/browser tests; do not stop the Docker site.
+
+## Current matchday and continuous refresh
+
+Featured picks use the earliest Europe/Belgrade calendar day. Current assessments/prices update before kickoff; Performance retains original official publications and settlement revisions. Open pages refresh cached app data every minute without repeated bookmaker calls.
+
+The worker checks shortlist rollover and settlement every 30 seconds, refreshes domestic results every four hours, and polls official European results after kickoff plus two hours. European checks repeat at most every six hours while pending, once daily for corrections after completion, or when newly eligible later kickoffs enter the group. A league score call costs two credits and returns up to three days of results. Quota/outage preserves pending records.
+
+The Odds API scores do not distinguish regulation time from extra time. Automatic European settlement is restricted to reviewed UEFA 2026/27 league-phase windows in `backend/app/european_results.py`. Outside those windows, results stay pending until a regulation-aware source is integrated. Review the windows for each new season. If the worker is stopped more than three days, missed European results require a historical source.
+
+The production preview includes Dark Reader's `darkreader-lock` meta tag to preserve the bright theme and prevent extension-generated hydration changes. Reload an already-open extension-modified page. Genuine hydration warnings are not globally suppressed.
+
+Sources: [score coverage](https://the-odds-api.com/sports-odds-data/sports-apis.html), [score endpoint/cost](https://the-odds-api.com/liveapi/guides/v4/#get-scores), [Champions League dates](https://www.uefa.com/uefachampionsleague/news/02a8-2176fa83582b-d99f0b27f405-1000--champions-league-league-phase-fixtures-and-results-by-team/), [Europa League dates](https://www.uefa.com/uefaeuropaleague/news/02a6-20d57d095740-e1e0b3de85df-1000--2026-27-europa-league-teams-dates-draws-format-f/), [Conference League dates](https://www.uefa.com/uefaconferenceleague/news/02a8-2174cb200f25-b94693ddff4e-1000--202627-conference-league-all-the-league-phase-fixtures/), [Dark Reader opt-out](https://github.com/darkreader/darkreader/blob/main/CONTRIBUTING.md).

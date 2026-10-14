@@ -4,6 +4,7 @@ test("homepage analyst uses accessible inputs and a labelled data-backed answer"
   page,
 }) => {
   await page.goto("/");
+  await expect(page.locator("meta[name=darkreader-lock]")).toHaveCount(1);
   await expect(page.getByLabel("Your match")).toHaveCount(0);
   await page
     .getByLabel("What would you like to know?")
@@ -46,6 +47,10 @@ test("goal lines keep distinct prices and BTTS/double chance can enter a parlay"
   await page
     .getByRole("button", { name: "Under/over goals", exact: true })
     .click();
+  await expect(page.getByLabel("Goal line")).toHaveValue("all");
+  await expect(
+    page.locator(".fixture-row").first().locator(".fixture-line"),
+  ).toHaveCount(10);
   await page.getByLabel("Goal line").selectOption("1.5");
   await expect(page).toHaveURL(/line=1.5/);
   const first = page.locator(".fixture-outcomes button").first();

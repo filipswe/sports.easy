@@ -42,6 +42,7 @@ type Detail = {
     input_cutoff: string;
     model_version: string;
     factors: {
+      basis?: string;
       home_rate: number;
       away_rate: number;
       first_half: { home_rate: number; away_rate: number } | null;
@@ -242,7 +243,11 @@ export function MatchDetail({ id }: { id: string }) {
               <div className="insight-card">
                 <div className="overline">
                   <Sparkles size={15} />{" "}
-                  {focus ? "YOUR PICK, ANALYZED" : "THE MODEL’S VIEW"}
+                  {focus
+                    ? "YOUR PICK, ANALYZED"
+                    : detail.prediction?.factors.basis === "market"
+                      ? "THE MARKET’S VIEW"
+                      : "THE MODEL’S VIEW"}
                 </div>
                 <h2>
                   {chosen ? pickLabel(chosen) : "Awaiting enough match data"}
@@ -345,7 +350,7 @@ export function MatchDetail({ id }: { id: string }) {
                       <h3>{m.name}</h3>
                       <span className="hint">
                         {match.mode === "demo" ? "Sample odds" : "Current odds"}{" "}
-                        / model chance
+                        / estimated chance
                       </span>
                     </div>
                     {m.picks.length ? (

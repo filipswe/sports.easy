@@ -201,7 +201,7 @@ export function PredictionCard({
       </div>
       <div className="probability">
         <div>
-          <span>Model chance</span>
+          <span>{s.probability_basis || "Model chance"}</span>
           <strong>{pct(s.probability)}</strong>
         </div>
         <div className="probability-track">

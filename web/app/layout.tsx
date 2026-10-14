@@ -7,8 +7,9 @@ export const metadata: Metadata = {
     default: "sports.easy — Betting made easy",
     template: "%s | sports.easy",
   },
+  other: { "darkreader-lock": "true" },
   description:
-    "Research football matches with transparent statistical estimates, bookmaker comparisons and honest data quality.",
+    "Football picks, current sportsbook prices and clear match analysis.",
 };
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (

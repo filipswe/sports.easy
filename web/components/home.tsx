@@ -18,9 +18,23 @@ export function Home() {
   const [items, setItems] = useState<Selection[] | null>(null),
     [error, setError] = useState("");
   useEffect(() => {
-    api<{ items: Selection[] }>("/recommendations")
-      .then((r) => setItems(r.items))
-      .catch((e) => setError(e.message));
+    let active = true;
+    const load = () =>
+      api<{ items: Selection[] }>("/recommendations")
+        .then((r) => {
+          if (active) setItems(r.items);
+        })
+        .catch((e) => {
+          if (active) setError(e.message);
+        });
+    load();
+    const interval = window.setInterval(() => {
+      if (!document.hidden) load();
+    }, 60000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
   }, []);
   const top = items?.[0];
   return (
@@ -74,7 +88,7 @@ export function Home() {
           </div>
           <div className="hero-match">
             <span className="badge green-badge">
-              <Sparkles size={12} /> Model spotlight
+              <Sparkles size={12} /> Matchday spotlight
             </span>
             {top ? (
               <>
@@ -93,7 +107,9 @@ export function Home() {
                   <span>First kickoff in our shortlist</span>
                   <strong>
                     {pct(top.probability)}
-                    <small>model chance</small>
+                    <small>
+                      {top.probability_basis?.toLowerCase() || "model chance"}
+                    </small>
                   </strong>
                 </div>
               </>
@@ -129,8 +145,8 @@ export function Home() {
             </div>
             <h2>Our recommended picks</h2>
             <p>
-              Top model picks for the next 24-hour matchday window, in kickoff
-              order.
+              Our picks for the soonest matchday, in kickoff order. European
+              nights and the top five leagues, as they happen.
             </p>
           </div>
           <Link className="text-link" href="/performance">

@@ -118,6 +118,11 @@ def test_score_identity_phase_and_corrections_are_verified(db, monkeypatch):
         "last_update": at.isoformat(),
         "scores": [{"name": "Feyenoord", "score": "0"}, {"name": "Como 1907", "score": "1"}],
     }
+    assert (
+        apply_scores(db, [{**record, "completed": False, "last_update": None}], 2, [fixture], at)
+        == 0
+    )
+    assert apply_scores(db, [{**record, "last_update": None}], 2, [fixture], at) == 0
     assert apply_scores(db, [{**record, "home_team": "Wrong club"}], 2, [fixture], at) == 0
     assert (
         apply_scores(

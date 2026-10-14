@@ -41,7 +41,7 @@ export function OutcomeButton({
       className={`outcome ${selected ? "is-selected" : ""}`}
       onClick={() => toggle(pick)}
       aria-pressed={selected}
-      aria-label={`${pickLabel(pick)}${pick.probability !== null ? `, ${pct(pick.probability)} model chance` : ""}${pick.odds ? `, odds ${pick.odds.toFixed(2)}` : ""}`}
+      aria-label={`${pickLabel(pick)}${pick.probability !== null ? `, ${pct(pick.probability)} estimated chance` : ""}${pick.odds ? `, odds ${pick.odds.toFixed(2)}` : ""}`}
     >
       <span>
         {selected && <Check size={12} />} {label}
@@ -58,9 +58,8 @@ export function MatchBrowser() {
   const period = params.get("period") || "week",
     search = params.get("team") || "",
     market = params.get("market") || "1x2",
-    goalLine = params.get("line") || "2.5",
-    halfLine =
-      params.get("half_line") || (meta?.mode === "live" ? "1.5" : "0.5"),
+    goalLine = params.get("line") || "all",
+    halfLine = params.get("half_line") || "all",
     league = params.get("league") || "";
   const [input, setInput] = useState(search),
     [matches, setMatches] = useState<MatchRow[] | null>(null),
@@ -106,8 +105,8 @@ export function MatchBrowser() {
     let active = true;
     setError("");
     setMatches(null);
-    (async () => {
-      if (meta?.mode === "live" && market !== "1x2") {
+    const load = async (refresh = true) => {
+      if (refresh && meta?.mode === "live" && market !== "1x2") {
         await refreshPrices({ period, team: search, league });
       }
       return api<{ items: MatchRow[] }>(
@@ -119,15 +118,22 @@ export function MatchBrowser() {
             market: selectedMarket,
           }),
       );
-    })()
-      .then((r) => {
-        if (active) setMatches(r.items);
-      })
-      .catch((e) => {
-        if (active) setError(e.message);
-      });
+    };
+    const fetchMatches = (refresh: boolean) =>
+      load(refresh)
+        .then((r) => {
+          if (active) setMatches(r.items);
+        })
+        .catch((e) => {
+          if (active) setError(e.message);
+        });
+    fetchMatches(true);
+    const interval = window.setInterval(() => {
+      if (!document.hidden) fetchMatches(false);
+    }, 60000);
     return () => {
       active = false;
+      window.clearInterval(interval);
     };
   }, [period, search, league, market, selectedMarket, meta?.mode]);
   const list = matches
@@ -237,6 +243,7 @@ export function MatchBrowser() {
                   )
                 }
               >
+                <option value="all">All goal lines</option>
                 {Array.from({ length: 10 }, (_, n) => `${n + 0.5}`).map(
                   (line) => (
                     <option key={line} value={line}>
@@ -254,8 +261,8 @@ export function MatchBrowser() {
                 : "Loading matches…"}
             </span>
             <span>
-              {meta?.mode === "demo" ? "Sample odds" : "Current odds"} · Model
-              chance %
+              {meta?.mode === "demo" ? "Sample odds" : "Current odds"} ·
+              Estimated chance %
             </span>
           </div>
           {error ? (
@@ -281,7 +288,28 @@ export function MatchBrowser() {
           ) : (
             <div className="match-list">
               {list.map((m, i) => {
-                const group = m.markets.find((g) => g.key === selectedMarket),
+                const groups = m.markets
+                    .filter((g) =>
+                      selectedMarket === "totals_all"
+                        ? g.key === "totals" || g.key.startsWith("totals_")
+                        : selectedMarket === "half_totals_all"
+                          ? g.key.startsWith("half_totals_")
+                          : g.key === selectedMarket,
+                    )
+                    .sort((a, b) =>
+                      selectedMarket.endsWith("_all")
+                        ? Number(
+                            a.key === "totals"
+                              ? "2.5"
+                              : a.key.split("_").at(-1),
+                          ) -
+                          Number(
+                            b.key === "totals"
+                              ? "2.5"
+                              : b.key.split("_").at(-1),
+                          )
+                        : 0,
+                    ),
                   day = new Date(m.kickoff).toLocaleDateString("en-GB", {
                     weekday: "short",
                     day: "numeric",
@@ -319,14 +347,20 @@ export function MatchBrowser() {
                           <strong>{m.away}</strong>
                         </span>
                       </Link>
-                      <div className="fixture-outcomes">
-                        {group?.picks.length ? (
-                          group.picks.map((p) => (
-                            <OutcomeButton
-                              key={p.outcome}
-                              pick={withMatch(p, m)}
-                              short
-                            />
+                      <div
+                        className={`fixture-outcomes ${selectedMarket.endsWith("_all") ? "all-goal-lines" : ""}`}
+                      >
+                        {groups.length ? (
+                          groups.map((group) => (
+                            <div className="fixture-line" key={group.key}>
+                              {group.picks.map((p) => (
+                                <OutcomeButton
+                                  key={p.outcome}
+                                  pick={withMatch(p, m)}
+                                  short
+                                />
+                              ))}
+                            </div>
                           ))
                         ) : (
                           <span className="hint">

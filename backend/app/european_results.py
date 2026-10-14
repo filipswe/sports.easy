@@ -44,13 +44,17 @@ def apply_scores(db, records, league_id, fixtures, at):
     }
     updated = 0
     for item in records:
-        if not isinstance(item, dict):
+        if not isinstance(item, dict) or item.get("completed") is not True:
             continue
         f = by_provider.get(item.get("id"))
         if (
             not f
             or item.get("sport_key") != BY_ID[league_id].sport
             or not regulation_verified(f, league_id)
+        ):
+            continue
+        if not isinstance(item.get("commence_time"), str) or not isinstance(
+            item.get("last_update"), str
         ):
             continue
         try:
@@ -132,7 +136,12 @@ def refresh_european_results(db):
             .order_by(IngestionRun.created_at.desc())
         )
         interval = 86400 if all(f.status == "finished" for f in group) else 21600
-        if previous and (at - utc(previous.created_at)).total_seconds() < interval:
+        fixture_ids = {f.id for f in group}
+        if (
+            previous
+            and fixture_ids <= set(previous.detail.get("fixture_ids", []))
+            and (at - utc(previous.created_at)).total_seconds() < interval
+        ):
             continue
         try:
             records = client.get(
@@ -150,11 +159,21 @@ def refresh_european_results(db):
             count = apply_scores(db, records, league_id, group, at)
             db.add(
                 IngestionRun(
-                    provider=scope, status="complete", detail={"updated": count}, created_at=at
+                    provider=scope,
+                    status="complete",
+                    detail={"updated": count, "fixture_ids": sorted(fixture_ids)},
+                    created_at=at,
                 )
             )
             db.commit()
         except ProviderUnavailable:
             db.rollback()
-            db.add(IngestionRun(provider=scope, status="limited", detail={}, created_at=at))
+            db.add(
+                IngestionRun(
+                    provider=scope,
+                    status="limited",
+                    detail={"fixture_ids": sorted(fixture_ids)},
+                    created_at=at,
+                )
+            )
             db.commit()

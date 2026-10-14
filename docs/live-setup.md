@@ -16,7 +16,7 @@ PUBLIC_ORIGIN=http://localhost:3000
 COOKIE_SECURE=false
 ODDS_BOOKMAKER_KEY=pinnacle
 ODDS_REGION=eu
-POLL_SECONDS=86400
+POLL_SECONDS=14400
 ODDS_POLL_SECONDS=259200
 PROVIDER_DAILY_BUDGET=80
 ODDS_DAILY_BUDGET=64
@@ -43,7 +43,7 @@ The football refresh uses ten requests: current and previous seasons across five
 
 Base live sweeps cover 1X2 and offered totals at 2.5. Opening another market or a match requests cached per-event Pinnacle BTTS, double-chance, alternate full-time totals and first-half totals. Each half-goal line from 0.5 through 9.5 has its own actual quote; whole/quarter Asian lines are excluded because push and split settlement are not implemented. Not every event offers every line. Live views hide unquoted selections. Model probabilities and entered odds are not bookmaker quotes.
 
-Detail requests cost up to four credits per event, cache for three days and fetch at most six matches per browsing request. “Find more priced matches” requests the next uncached batch. The shared daily/monthly guards also cover these requests, so the free allowance cannot provide every expanded market for every match at public scale. Budget exhaustion preserves valid cached quotes without inventing prices.
+Detail requests cost up to five credits per event, cache for three days and fetch at most six matches per browsing request. “Find more priced matches” requests the next uncached batch. The shared daily/monthly guards also cover these requests, so the free allowance cannot provide every expanded market for every match at public scale. Budget exhaustion preserves valid cached quotes without inventing prices.
 
 The current European catalog has 63 reviewed club crests cached under `web/public/clubs`, with source identities in `backend/app/club_crests.json`. An optional API-Football key lets the worker resolve up to four future missing crests per tick, with a ten-request/minute guard and seven-day attempt cache; ambiguous club identities are rejected.
 
@@ -57,4 +57,6 @@ For an existing API-Football subscription, choose `FOOTBALL_PROVIDER=api-footbal
 
 ## Current milestone overrides
 
-Use `POLL_SECONDS=86400`, `ODDS_POLL_SECONDS=259200`, `ODDS_DAILY_BUDGET=64`, `ODDS_EVENT_DAILY_BUDGET=32` and `ODDS_MONTHLY_BUDGET=450` for eight competitions. The earlier daily five-league budget guidance is superseded. Add the optional free Groq token as `GROQ_API_KEY` only in ignored `.env`. Follow [the isolated preview and release checklist](production-readiness.md) before updating an existing installation.
+Use `POLL_SECONDS=14400`, `ODDS_POLL_SECONDS=259200`, `ODDS_DAILY_BUDGET=64`, `ODDS_EVENT_DAILY_BUDGET=32` and `ODDS_MONTHLY_BUDGET=450` for eight competitions. The earlier daily five-league budget guidance is superseded. Add the optional free Groq token as `GROQ_API_KEY` only in ignored `.env`. Follow [the isolated preview and release checklist](production-readiness.md) before updating an existing installation.
+
+Featured picks include the earliest European matchday before later domestic games. Without verified history, a labelled market baseline uses complete real 1X2 prices with the margin removed. The preview starts a worker and production UI; open pages refresh cached data every minute. See [settlement coverage](production-readiness.md#current-matchday-and-continuous-refresh) for regulation-time and three-day feed limits.

@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import shutil
 import signal
 import socket
 import sqlite3
@@ -86,6 +87,10 @@ def serve(root, env, development=False):
     if not development:
         print("Preparing production preview…", flush=True)
         subprocess.run(["npm", "run", "build"], cwd=root / "web", env=web_env, check=True)
+        standalone = root / "web/.next/standalone"
+        shutil.copytree(root / "web/public", standalone / "public", dirs_exist_ok=True)
+        shutil.copytree(root / "web/.next/static", standalone / ".next/static", dirs_exist_ok=True)
+        web_env.update(HOSTNAME="127.0.0.1", PORT="3101")
     try:
         children.append(
             subprocess.Popen(
@@ -107,16 +112,9 @@ def serve(root, env, development=False):
         )
         children.append(
             subprocess.Popen(
-                [
-                    "npm",
-                    "run",
-                    "dev" if development else "start",
-                    "--",
-                    "--hostname",
-                    "127.0.0.1",
-                    "--port",
-                    "3101",
-                ],
+                ["npm", "run", "dev", "--", "--hostname", "127.0.0.1", "--port", "3101"]
+                if development
+                else ["node", str(root / "web/.next/standalone/server.js")],
                 cwd=root / "web",
                 env=web_env,
                 start_new_session=True,
