@@ -15,7 +15,7 @@ from urllib.request import urlopen
 from dotenv import dotenv_values
 
 
-def live_refresh_due(database, at=None, interval=86400):
+def live_refresh_due(database, at=None, interval=14400):
     at = at or datetime.now(UTC)
     with sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True) as db:
         row = db.execute(
@@ -39,7 +39,7 @@ def prepare_database(root, env, database, live):
         check=True,
     )
     database.chmod(0o600)
-    if live and not live_refresh_due(database):
+    if live and not live_refresh_due(database, interval=int(env.get("POLL_SECONDS", "14400"))):
         print("Using isolated live cache; fixture refresh is not due yet.", flush=True)
         return
     result = subprocess.run(
@@ -72,7 +72,7 @@ def stop(children):
             child.wait()
 
 
-def serve(root, env):
+def serve(root, env, development=False):
     children = []
     web_env = {
         **os.environ,
@@ -83,6 +83,9 @@ def serve(root, env):
     for key in list(web_env):
         if any(word in key for word in ("KEY", "SECRET", "PASSWORD")) or key == "DATABASE_URL":
             del web_env[key]
+    if not development:
+        print("Preparing production preview…", flush=True)
+        subprocess.run(["npm", "run", "build"], cwd=root / "web", env=web_env, check=True)
     try:
         children.append(
             subprocess.Popen(
@@ -104,9 +107,26 @@ def serve(root, env):
         )
         children.append(
             subprocess.Popen(
-                ["npm", "run", "dev", "--", "--hostname", "127.0.0.1", "--port", "3101"],
+                [
+                    "npm",
+                    "run",
+                    "dev" if development else "start",
+                    "--",
+                    "--hostname",
+                    "127.0.0.1",
+                    "--port",
+                    "3101",
+                ],
                 cwd=root / "web",
                 env=web_env,
+                start_new_session=True,
+            )
+        )
+        children.append(
+            subprocess.Popen(
+                [str(root / ".venv/bin/python"), "-m", "app.worker"],
+                cwd=root / "backend",
+                env=env,
                 start_new_session=True,
             )
         )
@@ -133,6 +153,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--live", action="store_true", help="Use isolated, cached real data")
     parser.add_argument("--ai", action="store_true", help="Enable the ignored Groq key")
+    parser.add_argument(
+        "--dev", action="store_true", help="Use Next hot reload instead of the production preview"
+    )
     args = parser.parse_args()
     for port in (3101, 8101):
         with socket.socket() as probe:
@@ -154,7 +177,7 @@ def main():
         GROQ_API_KEY=env.get("GROQ_API_KEY", "") if args.ai else "",
         ODDS_DAILY_BUDGET="64",
         ODDS_POLL_SECONDS="259200",
-        POLL_SECONDS="86400",
+        POLL_SECONDS="14400",
         PATH="/usr/local/bin:" + os.environ.get("PATH", ""),
     )
     try:
@@ -170,11 +193,11 @@ def main():
             cache.mkdir(mode=0o700, exist_ok=True)
             database = cache / f"live-{provider}.db"
             prepare_database(root, env, database, live=True)
-            serve(root, env)
+            serve(root, env, development=args.dev)
         else:
             with tempfile.TemporaryDirectory(prefix="sports-easy-preview-") as temporary:
                 prepare_database(root, env, Path(temporary) / "preview.db", live=False)
-                serve(root, env)
+                serve(root, env, development=args.dev)
     except KeyboardInterrupt:
         pass
 

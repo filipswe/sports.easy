@@ -22,8 +22,8 @@ def cache(database, fetched=None):
             )
 
 
-@pytest.mark.parametrize("hours,due", [(-1, True), (0, False), (23, False), (24, True)])
-def test_live_preview_respects_daily_cache(tmp_path, hours, due):
+@pytest.mark.parametrize("hours,due", [(-1, True), (0, False), (3, False), (4, True)])
+def test_live_preview_respects_four_hour_cache(tmp_path, hours, due):
     database = tmp_path / "live.db"
     at = datetime(2026, 10, 14, 12, tzinfo=UTC)
     cache(database, at - timedelta(hours=hours))

@@ -300,12 +300,22 @@ def test_stronger_new_pick_enters_shortlist_without_rewriting_old_records(db):
     import copy
 
     from app.models import Publication, Quote
-    from app.picks import featured_window, publish_recommendations, recommendation_rows
+    from app.picks import (
+        eligible_rows,
+        featured_window,
+        publish_recommendations,
+        recommendation_rows,
+    )
 
     before = recommendation_rows(db, upcoming=True)
     recorded_fixtures = {r["fixture_id"] for r in before}
     rows, _, _ = featured_window(db)
-    candidate = next(row for row in rows if row["fixture_id"] not in recorded_fixtures)
+    candidate = next(row for row in eligible_rows(db) if row["fixture_id"] not in recorded_fixtures)
+    from datetime import timedelta
+
+    fixture = db.get(Fixture, candidate["fixture_id"])
+    fixture.kickoff = rows[0]["kickoff"] + timedelta(hours=1)
+    db.flush()
     old = db.get(Prediction, candidate["prediction_id"])
     probabilities = copy.deepcopy(old.probabilities)
     probabilities["1x2"] = {"home": 0.99, "draw": 0.005, "away": 0.005}
@@ -314,7 +324,7 @@ def test_stronger_new_pick_enters_shortlist_without_rewriting_old_records(db):
         model_id=old.model_id,
         input_cutoff=old.input_cutoff,
         history_fetched_at=old.history_fetched_at,
-        fixture_kickoff=old.fixture_kickoff,
+        fixture_kickoff=fixture.kickoff,
         probabilities=probabilities,
         factors=copy.deepcopy(old.factors),
         quality=old.quality,

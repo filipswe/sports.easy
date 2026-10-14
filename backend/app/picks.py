@@ -1,16 +1,17 @@
 """Chronological matchday shortlist, retaining every original official recommendation."""
 
 from datetime import timedelta
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 
 from .config import settings
 from .db import now, utc
-from .leagues import LEAGUES
+from .leagues import ALL_COMPETITIONS
 from .models import Competition, Recommendation, Settlement
 from .research import all_rows, recorded_price_usable
 
-POLICY = "top-five-leagues-24h-v3"
+POLICY = "earliest-matchday-eight-competitions-v4"
 
 
 def eligible_rows(db, fresh_only=False):
@@ -20,7 +21,7 @@ def eligible_rows(db, fresh_only=False):
         c.id
         for c in db.scalars(select(Competition))
         if c.mode == settings.app_data_mode
-        and c.provider_id.split(":")[1] in {str(league.id) for league in LEAGUES}
+        and c.provider_id.split(":")[1] in {str(league.id) for league in ALL_COMPETITIONS}
     }
     return [
         r
@@ -37,13 +38,20 @@ def featured_window(db, fresh_only=False):
     if not rows:
         return [], None, None
     start = min(r["kickoff"] for r in rows)
-    end = start + timedelta(hours=24)
+    end = (
+        start.astimezone(ZoneInfo("Europe/Belgrade")).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        + timedelta(days=1)
+    ).astimezone(start.tzinfo)
     return [r for r in rows if start <= r["kickoff"] < end], start, end
 
 
 def publish_recommendations(db):
-    # Daily free feeds use actual snapshots fetched within 24h, explicitly labelled
-    # outdated when applicable. Faster feeds still require fresh source timestamps.
+    from .european_predictions import publish_european_predictions
+
+    publish_european_predictions(db)
+    # Three-day free feeds retain verified snapshots; faster feeds require fresh timestamps.
     rows, start, end = featured_window(db)
     rows = [row for row in rows if recorded_price_usable(row)]
     if not rows:
@@ -109,7 +117,27 @@ def recommendation_rows(db, upcoming=False):
             )
             if current is None:
                 continue
-            row = {**row, "odds": current["odds"], "bookmaker": current["bookmaker"]}
+            row = {
+                **row,
+                **{
+                    key: current[key]
+                    for key in (
+                        "odds",
+                        "bookmaker",
+                        "probability",
+                        "probability_basis",
+                        "reason",
+                        "analysis",
+                        "generated_at",
+                        "model_version",
+                        "quality",
+                        "likelihood",
+                        "estimated_ev",
+                        "failure_probability",
+                        "fair_odds",
+                    )
+                },
+            }
         items.append(
             {
                 **row,

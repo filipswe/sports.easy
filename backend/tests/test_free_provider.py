@@ -252,7 +252,12 @@ def test_daily_shortlist_retains_original_prices_when_they_age(empty_db, monkeyp
     monkeypatch.setattr(settings, "odds_bookmaker_key", "demo-exchange")
     ingest(empty_db)
     before = recommendation_rows(empty_db, upcoming=True)
-    assert len(before) == 3
+    assert before
+    from zoneinfo import ZoneInfo
+
+    assert (
+        len({row["kickoff"].astimezone(ZoneInfo("Europe/Belgrade")).date() for row in before}) == 1
+    )
     monkeypatch.setattr("app.research.now", lambda: anchor + timedelta(minutes=30))
     after = recommendation_rows(empty_db, upcoming=True)
     assert [r["id"] for r in after] == [r["id"] for r in before]

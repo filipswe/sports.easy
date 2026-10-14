@@ -49,6 +49,8 @@ def market_probabilities(prediction, market):
             "x2": p["away"] + p["draw"],
             "12": p["home"] + p["away"],
         }
+    if prediction.factors.get("basis") == "market":
+        return {}
     if market.startswith(("totals_", "half_totals_")):
         try:
             line = float(market.rsplit("_", 1)[1])

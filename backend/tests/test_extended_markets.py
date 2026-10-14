@@ -98,7 +98,7 @@ def test_detail_prices_are_csrf_protected_cached_and_not_invalidated_by_base_swe
     assert first.status_code == 200 and first.json()["fetched_matches"] == 1
     second = mutate(client, "/api/prices/refresh", {"fixture_id": fixture.id})
     assert second.json()["cached_matches"] == 1 and len(calls) == 1
-    assert calls[0][1] == 4
+    assert calls[0][1] == 5
     from app.models import IngestionRun
 
     db.add(

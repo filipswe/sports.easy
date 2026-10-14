@@ -107,6 +107,9 @@ def publication_row(db, pub, prediction, quote, fixture, book, home, away, compe
         "bookmaker_id": book.id,
         "region": book.region,
         "probability": p,
+        "probability_basis": "Market-based chance"
+        if prediction.factors.get("basis") == "market"
+        else "Model chance",
         "likelihood": likelihood(p),
         **value(p, float(quote.price)),
         "quality": "Limited"

@@ -41,9 +41,21 @@ def under(rate, line):
     return sum(poisson(rate, n) for n in range(math.floor(line) + 1))
 
 
+def matches_market(key, requested):
+    if requested == "all":
+        return True
+    if requested == "totals_all":
+        return key == "totals" or key.startswith("totals_")
+    if requested == "half_totals_all":
+        return key.startswith("half_totals_")
+    return key == requested
+
+
 def markets(prediction):
     if not prediction:
         return []
+    if prediction.factors.get("basis") == "market":
+        return []  # Only observed markets can be assessed from this baseline.
     p, factors = prediction.probabilities, prediction.factors
     h, a = factors["home_rate"], factors["away_rate"]
     result = []
@@ -338,7 +350,7 @@ def match_row(
                     if outcome in quoted
                 }
     if market_key != "all":
-        catalog = [market for market in catalog if market["key"] == market_key]
+        catalog = [market for market in catalog if matches_market(market["key"], market_key)]
     for market in catalog:
         market["picks"] = []
         alternatives = market.pop("outcomes")
@@ -419,18 +431,24 @@ def matchday(
     league: str = "",
     summary: bool = False,
     market: str = Query(
-        "all", pattern=r"^(all|1x2|btts|totals|totals_[0-9]\.5|half_totals_[0-9]\.5|double_chance)$"
+        "all",
+        pattern=r"^(all|1x2|btts|totals|totals_all|half_totals_all|totals_[0-9]\.5|half_totals_[0-9]\.5|double_chance)$",
     ),
     db=Depends(get_db),
 ):
     at = now()
-    day = at.replace(hour=0, minute=0, second=0, microsecond=0)
+    from zoneinfo import ZoneInfo
+
+    day = at.astimezone(ZoneInfo("Europe/Belgrade")).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
     start = day + timedelta(days=1) if period == "tomorrow" else at
     end = (
         day + timedelta(days=2 if period == "tomorrow" else 1)
         if period not in {"week", "fortnight"}
         else at + timedelta(days=14 if period == "fortnight" else 7)
     )
+    start, end = utc(start), utc(end)
     allowed = [
         c.id
         for c in db.scalars(select(Competition))
@@ -455,7 +473,7 @@ def matchday(
         markets_filter=("1x2", "btts", "totals")
         if summary
         else (market,)
-        if market != "all"
+        if market not in {"all", "totals_all", "half_totals_all"}
         else None,
     )
     priced = {q["fixture_id"] for q in quotes}
@@ -469,7 +487,8 @@ def matchday(
                 summary
                 or market == "all"
                 or any(
-                    quote["fixture_id"] == f.id and quote["market"] == market for quote in quotes
+                    quote["fixture_id"] == f.id and matches_market(quote["market"], market)
+                    for quote in quotes
                 )
             )
         )
@@ -495,7 +514,8 @@ def recommendations(db=Depends(get_db)):
     return {
         "items": recommendation_rows(db, upcoming=True),
         "mode": settings.app_data_mode,
-        "window_hours": 24,
+        "window": "Earliest available matchday",
+        "timezone": "Europe/Belgrade",
         "order": "kickoff",
     }
 

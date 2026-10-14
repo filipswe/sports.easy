@@ -1,5 +1,7 @@
 """Bounded additional bookmaker markets, fetched only on requested match views."""
 
+import fcntl
+import os
 import threading
 from contextlib import contextmanager
 from datetime import timedelta
@@ -20,7 +22,7 @@ from .research import require_fixture
 
 router = APIRouter(prefix="/api/prices", tags=["prices"])
 local_lock = threading.Lock()
-DETAIL_MARKETS = "alternate_totals,btts,double_chance,alternate_totals_h1"
+DETAIL_MARKETS = "alternate_totals,btts,double_chance,totals_h1,alternate_totals_h1"
 
 
 @contextmanager
@@ -34,6 +36,19 @@ def provider_lock(db):
                 if acquired:
                     connection.execute(text("SELECT pg_advisory_unlock(719482)"))
     else:
+        database = db.bind.url.database
+        if database and database != ":memory:":
+            descriptor = os.open(database + ".provider.lock", os.O_CREAT | os.O_RDWR, 0o600)
+            try:
+                try:
+                    fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    yield False
+                    return
+                yield True
+            finally:
+                os.close(descriptor)
+            return
         acquired = local_lock.acquire(blocking=False)
         try:
             yield acquired
@@ -52,7 +67,13 @@ class RefreshInput(BaseModel):
 
 def detail_key(fixture):
     return "odds-detail:" + fingerprint(
-        [fixture.id, utc(fixture.kickoff), settings.odds_region, settings.odds_bookmaker_key]
+        [
+            fixture.id,
+            utc(fixture.kickoff),
+            settings.odds_region,
+            settings.odds_bookmaker_key,
+            DETAIL_MARKETS,
+        ]
     )
 
 
@@ -164,7 +185,7 @@ def refresh(body: RefreshInput, db=Depends(get_db)):
                         "oddsFormat": "decimal",
                         "dateFormat": "iso",
                     },
-                    cost=4,
+                    cost=5,
                 )
                 if (
                     not isinstance(data, dict)

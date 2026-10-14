@@ -423,7 +423,9 @@ def detail(fixture_id: str, db=Depends(get_db)):
         )["items"],
         "explanation": {
             "kind": "Deterministic statistical explanation",
-            "text": f"The model fits opponent-adjusted attack and defence strengths to past goals, with home advantage and 180-day recency weighting. The inputs contain {p.factors['league_sample']} historical matches. Injuries, xG and lineups are not used. Independent Poisson scores can miss low-score dependence and team changes."
+            "text": "These estimates come from the sportsbook's complete match-result prices, with its margin removed. They are market-based, rather than an independent fit to match history."
+            if p and p.factors.get("basis") == "market"
+            else f"The model fits opponent-adjusted attack and defence strengths to past goals, with home advantage and 180-day recency weighting. The inputs contain {p.factors['league_sample']} historical matches. Injuries, xG and lineups are not used. Independent Poisson scores can miss low-score dependence and team changes."
             if p
             else "Insufficient historical coverage: the model abstains.",
             "sources": [p.id] if p else [],
