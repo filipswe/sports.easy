@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: '3.13'
       - run: pip install -r backend/requirements.txt
-      - run: ruff check backend && ruff format --check backend
+      - run: ruff check backend scripts && ruff format --check backend scripts
       - run: pytest -q
       - run: alembic upgrade head && python -m app.cli seed && PYTHONPATH=. python tests/postgres_smoke.py
         working-directory: backend

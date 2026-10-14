@@ -17,8 +17,9 @@ COOKIE_SECURE=false
 ODDS_BOOKMAKER_KEY=pinnacle
 ODDS_REGION=eu
 POLL_SECONDS=86400
+ODDS_POLL_SECONDS=259200
 PROVIDER_DAILY_BUDGET=80
-ODDS_DAILY_BUDGET=12
+ODDS_DAILY_BUDGET=20
 ODDS_MONTHLY_BUDGET=450
 ```
 
@@ -33,9 +34,9 @@ The worker handles ingestion. Do not run manual ingestion concurrently with it. 
 
 ## Free allowance and price age
 
-One five-league odds sweep reserves 10 credits: five requests × two markets. Daily refreshes use 280–310 credits/month before retries, within the verified Starter allowance of 500. Daily and monthly guards reserve usage before every attempt, including failures. The monthly guard uses UTC calendar months; the provider's billing reset can differ, and its remaining quota still applies. Verification requests outside the worker also consume credits.
+One eight-competition odds sweep reserves 16 credits: eight requests × two markets. Three-day refreshes use approximately 160–176 credits/month before retries, within the verified Starter allowance of 500. Daily and monthly guards reserve usage before every attempt, including failures. The monthly guard uses UTC calendar months; the provider's billing reset can differ, and its remaining quota still applies. Verification requests outside the worker also consume credits.
 
-The public interface uses the label **Current odds** and omits price-age badges and update timestamps. Internally, prices retain the bookmaker's original update time and become stale after ten minutes. Daily refreshes are not continuous pricing. Daily-feed recommendations and parlay suggestions can use real snapshots fetched within 24 hours; faster feeds require fresh source timestamps. Current-value and positive-EV filters still reject stale prices. Stronger newly available picks can enter the five-pick shortlist; every earlier official recommendation retains its original price and probability in Performance. Custom parlays identify sportsbook or explicitly entered prices, while saved and historical records retain their original odds.
+The public interface uses the label **Current odds** and omits price-age badges and update timestamps. Internally, prices retain the bookmaker's original update time and become stale after ten minutes. Daily refreshes are not continuous pricing. Three-day-feed recommendations and parlay suggestions can use real snapshots verified within 72 hours; faster feeds require fresh source timestamps. Current-value and positive-EV filters still reject stale prices. Stronger newly available picks can enter the five-pick shortlist; every earlier official recommendation retains its original price and probability in Performance. Custom parlays identify sportsbook or explicitly entered prices, while saved and historical records retain their original odds.
 
 The football refresh uses ten requests: current and previous seasons across five leagues. Its local ten-request-per-minute cap protects the Free tier. A denied previous season can be skipped, but current-season denial is never hidden. The model abstains below 40 league results or eight results for a club. Missing halftime scores disable the separate first-half estimate.
 

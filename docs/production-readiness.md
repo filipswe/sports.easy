@@ -10,7 +10,7 @@ Use Node 24 and the existing Python 3.13 virtual environment, then from the repo
 .venv/bin/python scripts/preview.py
 ```
 
-Open **http://127.0.0.1:3101**. This migrates/seeds a new temporary SQLite database and starts separate API/web services on 8101/3101. Ctrl+C stops them and removes their preview data. It does not modify Docker, the existing database, accounts or Git branch. Ports must be free.
+Open **http://127.0.0.1:3101**. This migrates/seeds a new temporary sample SQLite database and starts separate API/web services on 8101/3101. Ctrl+C stops them and removes their sample data. Live preview data is retained in ignored `.preview/`. It does not modify Docker, the existing database, accounts or Git branch. Ports must be free.
 
 For actual data and Groq answers, with credentials already in ignored `.env`:
 
@@ -18,7 +18,7 @@ For actual data and Groq answers, with credentials already in ignored `.env`:
 .venv/bin/python scripts/preview.py --live --ai
 ```
 
-This performs a bounded real ingestion into the preview only. Each initial eight-competition odds sweep costs 16 provider credits, with retry reservations subject to daily/monthly limits. Three European `/events` calls use a separate free request ledger. The preview does not start a polling worker. Repeated fresh live previews each consume a new sweep; use sample mode for layout work.
+This uses the separate ignored `.preview/live-football-data.db` (or API-Football equivalent). It migrates only that preview database, reuses successful fixture refreshes for 24 hours, and retains the three-day odds schedule. Each initial eight-competition odds sweep costs 16 provider credits, with retry reservations subject to daily/monthly limits. Three European `/events` calls use a separate free request ledger. The preview does not start a polling worker. Live restarts reuse the cache rather than spending a new sweep every time. A provider quota/outage keeps the preview available with stored data and hides expired/unpriced matches. It never substitutes sample data in live mode.
 
 ## New behavior
 
@@ -62,3 +62,7 @@ No merge, deployment, paid subscription or main-database migration is part of th
 5. An opt-in daily shortlist digest and localized explanations; no unsolicited messages.
 
 Keep real data quality and a clear match/pick flow ahead of adding more panels.
+
+## If port 3101 does not open
+
+The preview is a local process, so keep its terminal open until finished. Start it with the command above and wait for `Preview ready`. Port 3000 remains the older Docker installation until an approved update. If ports 3101/8101 are occupied, use the running preview or stop that specific process first. A separate Next development server for this same checkout must also be stopped before preview/browser tests; do not stop the Docker site.

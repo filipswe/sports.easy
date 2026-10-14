@@ -8,6 +8,7 @@ from .db import SessionLocal
 from .evaluation import evaluate
 from .ingestion import ingest
 from .models import AdminAudit, User
+from .providers import ProviderUnavailable
 
 parser = argparse.ArgumentParser(description="sports.easy operations")
 parser.add_argument("command", choices=["seed", "ingest", "evaluate", "promote-admin", "readiness"])
@@ -31,7 +32,11 @@ with SessionLocal() as db:
             raise SystemExit("Seed is only available in demo mode")
         print(json.dumps(ingest(db)))
     elif args.command == "ingest":
-        print(json.dumps(ingest(db)))
+        try:
+            print(json.dumps(ingest(db)))
+        except ProviderUnavailable as exc:
+            print("Provider refresh unavailable: " + str(exc))
+            raise SystemExit(2) from None
     elif args.command == "evaluate":
         print(json.dumps(evaluate(db), indent=2))
     else:
