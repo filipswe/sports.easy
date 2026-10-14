@@ -1,8 +1,19 @@
 """Only display club assets from the configured football providers."""
 
+import json
+from pathlib import Path
 from urllib.parse import urlsplit
 
 from .leagues import CLUBS
+from .names import normalized_name
+
+CLUB_CRESTS = json.loads(Path(__file__).with_name("club_crests.json").read_text())
+BY_NAME = {normalized_name(name): item for name, item in CLUB_CRESTS.items()}
+
+
+def provider_crest(name):
+    record = BY_NAME.get(normalized_name(name))
+    return record["source"] if record else None
 
 
 def safe_crest(value):
@@ -26,6 +37,9 @@ def safe_crest(value):
 
 
 def team_logo(team):
+    record = BY_NAME.get(normalized_name(team.name))
+    if record:
+        return record["asset"]
     source = safe_crest(team.crest_url)
     if source:
         return source

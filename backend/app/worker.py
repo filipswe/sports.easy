@@ -6,6 +6,7 @@ import time
 from sqlalchemy import delete, select, text
 from sqlalchemy.exc import IntegrityError
 
+from .club_metadata import backfill_crests
 from .config import settings
 from .db import SessionLocal, engine, now
 from .ingestion import ingest
@@ -38,6 +39,7 @@ def tick():
                 except IntegrityError:
                     db.rollback()
                     # Refresh the near-term shortlist every tick without another provider request.
+                    backfill_crests(db)
                     publish_recommendations(db)
                     db.commit()
                     return
@@ -62,6 +64,7 @@ def tick():
                     )
                 job.finished_at = now()
                 db.commit()
+                backfill_crests(db)
                 print(
                     json.dumps({"event": "ingestion", "job": job.id, "status": job.status}),
                     flush=True,
