@@ -48,3 +48,7 @@ Accounts, demo predictions and saved records remain stored. Live views exclude d
 Loopback development can show verification/reset links without SMTP, including with real football data. Public production requires SMTP, HTTPS, secure cookies and a private session secret. No bookmaker login or bet placement is used.
 
 For an existing API-Football subscription, choose `FOOTBALL_PROVIDER=api-football` and configure `API_FOOTBALL_KEY`. Current/previous-season entitlement is still required. This free setup makes that subscription unnecessary.
+
+## Current milestone overrides
+
+Use `POLL_SECONDS=86400`, `ODDS_POLL_SECONDS=259200`, `ODDS_DAILY_BUDGET=20` and `ODDS_MONTHLY_BUDGET=450` for eight competitions. The earlier daily five-league budget guidance is superseded. Add the optional free Groq token as `GROQ_API_KEY` only in ignored `.env`. Follow [the isolated preview and release checklist](production-readiness.md) before updating an existing installation.

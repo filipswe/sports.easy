@@ -2,21 +2,26 @@
 
 **Betting made easy.** A football match centre with a bright interface, recommended picks, match analysis and a parlay builder.
 
-New installations start with labelled sample data. The [free live setup](docs/live-setup.md) combines football-data.org fixtures/results with Pinnacle prices from The Odds API. The public interface labels these **Current odds**; the free feed refreshes daily and price-age checks remain on the server. Probabilities are model estimates, and no profitable track record is claimed.
+New installations start with labelled sample data. The [free live setup](docs/live-setup.md) combines football-data.org fixtures/results with Pinnacle prices from The Odds API. The public interface labels these **Current odds**; fixtures refresh daily, odds refresh every three days, and price-age checks remain on the server. Probabilities are model estimates, and no profitable track record is claimed.
 
 ## What works
 
 - Light responsive Home, All matches, match analysis, Parlays, Performance and How it works pages, with club crests and simple navigation.
 - Up to five model-selected recommendations across Premier League, La Liga, Serie A, Bundesliga and Ligue 1, chosen within the next 24-hour matchday window and displayed by kickoff. Performance follows these exact picks and their original odds, including losses and settlement corrections.
-- Upcoming fixtures, team search, dates and league filters; match stats, last-five form, previous meetings, and specific reasons for the model's view of every chosen outcome. All matches remain in kickoff order.
+- Priced upcoming fixtures only in live mode, plus Champions League, Europa League and Conference League within 14 days; team search, dates and league filters; match stats, last-five form, previous meetings, and specific reasons for the model's view of every chosen outcome. All matches remain in kickoff order.
 - Model estimates for 1X2, BTTS, several goal lines, first-half goals when history supports them, double chance, team goals and correct scores. Quotes are shown only when available; currently priced sample markets are 1X2, BTTS and totals 2.5.
 - Custom parlays, model suggestions within combined-odds ranges, combined probability and odds, user-entered prices and browser saves. One selection per match; repeated clubs are excluded.
 - One configured sportsbook source (`ODDS_BOOKMAKER_KEY=pinnacle` for live ingestion). No bookmaker comparison UI. Missing prices are shown as a dash.
 - FastAPI/SQLAlchemy persistence, PostgreSQL Docker deployment, Alembic migrations and a native SQLite development option.
 - Accounts, verified registration, password resets, preferences and authenticated saved picks. Append-only model, quote, official recommendation and settlement records.
-- Provider adapters, quotas, retry/backoff and a worker with PostgreSQL advisory locking.
+- Homepage match analyst with optional Groq AI evidence selection and labelled data-backed answers.
+- Provider adapters, quotas, retry/backoff, independent odds cadence and a worker with PostgreSQL advisory locking.
 
 See [product details and coverage](docs/product-update.md) for current market, data and storage limits.
+
+## Isolated milestone preview
+
+From this checkout, run `.venv/bin/python scripts/preview.py` and open **http://127.0.0.1:3101**. Add `--live --ai` to use the ignored provider/Groq credentials with a new temporary database. Ctrl+C stops the preview. Your existing Docker services and data remain untouched. See [production candidate, configuration and launch requirements](docs/production-readiness.md) for exact limitations and remaining launch work. [Milestone validation results](docs/milestone-verification.md) record the checks and independent review.
 
 ## Quick start: Docker Compose
 
@@ -149,9 +154,9 @@ The admin command requires an existing verified account and records an audit eve
 
 Follow the [live signup and activation steps](docs/live-setup.md) to connect actual bookmaker prices.
 
-Read [provider capability, cost and rights notes](docs/providers.md) before enabling live mode. You need API-Football and The Odds API credentials/entitlements, a selected region, reviewed display/retention rights, SMTP, HTTPS and a real deployment secret. No credentials are bundled, and live mode never substitutes synthetic data. The adapters have not been tested against paid accounts in this session.
+Read [provider capability, cost and rights notes](docs/providers.md) before enabling live mode. Use the free football-data.org fixture credential (or an entitled API-Football account) and The Odds API credential, a selected region, reviewed display/retention rights, SMTP, HTTPS and a real deployment secret. No credentials are bundled, and live mode never substitutes synthetic data. The adapters have not been tested against paid accounts in this session.
 
-Deliberately deferred: LLM commentary (deterministic explanations work), calibrated probabilities, archival historical odds ingestion, real validated performance, additional leagues beyond the top five, expanded live-market prices, injuries/lineups/xG/standings feeds and payment/betting operations. Dedicated model-input version storage, SQL-based large-archive ranking, shared rate limiting and production observability integration need further work before scale. This MVP uses compact season/market/stat representations instead of building unnecessary unused tables. See the [architecture and actual controls](docs/architecture.md), [model methodology](docs/methodology.md), [deployment/rollback guide](docs/deployment.md) and [verification report](docs/verification.md).
+Remaining limits: uncalibrated probabilities, no archival historical odds ingestion or proven real predictive performance, European quote-only markets without model estimates, missing European crest coverage, expanded live-market prices, injuries/lineups/xG/standings feeds and payment/betting operations. Chat selects verified facts rather than generating unrestricted commentary. Dedicated model-input version storage, SQL-based large-archive ranking, shared rate limiting and production observability integration need further work before scale. This MVP uses compact season/market/stat representations instead of building unnecessary unused tables. See the [architecture and actual controls](docs/architecture.md), [model methodology](docs/methodology.md), [deployment/rollback guide](docs/deployment.md) and [verification report](docs/verification.md).
 
 ## Troubleshooting
 
