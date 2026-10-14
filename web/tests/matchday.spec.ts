@@ -86,13 +86,16 @@ test("goal lines keep distinct prices and BTTS/double chance can enter a parlay"
 test("match list recovers from an interrupted connection by retry and automatic refresh", async ({
   page,
 }) => {
+  await page.goto("/");
+  await expect(page.locator(".app-status")).toContainText("Sample data");
+  await expect(page.locator(".prediction-card").first()).toBeVisible();
   await page.clock.install();
   let connected = false;
   await page.route("**/api/matchday?**", async (route) => {
     if (connected) await route.continue();
     else await route.abort("failed");
   });
-  await page.goto("/predictions");
+  await page.getByRole("link", { name: "All matches", exact: true }).click();
   const connectionError = page.locator(".notice.error[role=alert]");
   await expect(connectionError).toContainText("Connection interrupted");
   connected = true;
