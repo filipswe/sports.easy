@@ -66,11 +66,19 @@ def publish_recommendations(db):
 
 
 def recommendation_rows(db, upcoming=False):
-    publications = {r["id"]: r for r in all_rows(db, archive=True)}
+    recommendations = list(
+        db.scalars(select(Recommendation).order_by(Recommendation.created_at.desc()))
+    )
+    publications = {
+        r["id"]: r
+        for r in all_rows(
+            db, archive=True, publication_ids=[rec.publication_id for rec in recommendations]
+        )
+    }
     window_rows, start, end = featured_window(db) if upcoming else ([], None, None)
     eligible_fixtures = {r["fixture_id"] for r in window_rows}
     items = []
-    for rec in db.scalars(select(Recommendation).order_by(Recommendation.created_at.desc())):
+    for rec in recommendations:
         row = publications.get(rec.publication_id)
         if not row:
             continue

@@ -17,7 +17,7 @@ export function AnalystChat() {
   const [error, setError] = useState("");
   useEffect(() => {
     let active = true;
-    api<{ items: MatchRow[] }>("/matchday?period=fortnight")
+    api<{ items: MatchRow[] }>("/matchday?period=fortnight&summary=true")
       .then(({ items }) => {
         if (!active) return;
         setMatches(items);

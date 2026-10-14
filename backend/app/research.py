@@ -4,6 +4,7 @@ from typing import Literal
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
+from sqlalchemy.orm import aliased
 
 from .config import settings
 from .crests import team_logo
@@ -142,13 +143,25 @@ def publication_row(db, pub, prediction, quote, fixture, book, home, away, compe
     }
 
 
-def all_rows(db, fixture_id=None, archive=False):
+def all_rows(
+    db, fixture_id=None, archive=False, publication_ids=None, quote_ids=None, unique_quotes=False
+):
+    if (publication_ids is not None and not publication_ids) or (
+        quote_ids is not None and not quote_ids
+    ):
+        return []
+    home_team, away_team = aliased(Team), aliased(Team)
     query = (
-        select(Publication, Prediction, Quote, Fixture, Bookmaker)
+        select(
+            Publication, Prediction, Quote, Fixture, Bookmaker, home_team, away_team, Competition
+        )
         .join(Prediction, Publication.prediction_id == Prediction.id)
         .join(Quote, Publication.quote_id == Quote.id)
         .join(Fixture, Quote.fixture_id == Fixture.id)
         .join(Bookmaker, Quote.bookmaker_id == Bookmaker.id)
+        .join(home_team, Fixture.home_id == home_team.id)
+        .join(away_team, Fixture.away_id == away_team.id)
+        .join(Competition, Fixture.competition_id == Competition.id)
         .where(
             Prediction.mode == settings.app_data_mode,
             Quote.mode == settings.app_data_mode,
@@ -157,13 +170,20 @@ def all_rows(db, fixture_id=None, archive=False):
     )
     if fixture_id:
         query = query.where(Fixture.id == fixture_id)
+    if publication_ids is not None:
+        query = query.where(Publication.id.in_(publication_ids))
+    if quote_ids is not None:
+        query = query.where(Quote.id.in_(quote_ids))
     if not archive:
         query = query.where(Fixture.status == "scheduled", Fixture.kickoff > now())
     query = query.order_by(Prediction.generated_at.desc(), Quote.fetched_at.desc())
-    rows = []
-    for pub, p, q, f, b in db.execute(query):
+    rows, seen = [], set()
+    for pub, p, q, f, b, home, away, competition in db.execute(query):
         if not archive and utc(p.fixture_kickoff) != utc(f.kickoff):
             continue
+        if unique_quotes and q.id in seen:
+            continue
+        seen.add(q.id)
         rows.append(
             publication_row(
                 db,
@@ -172,9 +192,9 @@ def all_rows(db, fixture_id=None, archive=False):
                 q,
                 f,
                 b,
-                db.get(Team, f.home_id),
-                db.get(Team, f.away_id),
-                db.get(Competition, f.competition_id),
+                home,
+                away,
+                competition,
             )
         )
     return rows

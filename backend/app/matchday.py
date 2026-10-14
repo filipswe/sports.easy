@@ -96,14 +96,6 @@ def markets(prediction):
 
 def current_quotes(db, fixture_id=None):
     seen, result = set(), []
-    published = {}
-    for row in all_rows(db, fixture_id=fixture_id):
-        published.setdefault(row["quote_id"], row)
-    observations = {}
-    for observation in db.scalars(
-        select(QuoteObservation).order_by(QuoteObservation.observed_at.desc())
-    ):
-        observations.setdefault(observation.quote_id, observation)
     query = (
         select(Quote, Fixture, Bookmaker, Competition)
         .join(Fixture, Quote.fixture_id == Fixture.id)
@@ -119,6 +111,28 @@ def current_quotes(db, fixture_id=None):
     )
     if fixture_id:
         query = query.where(Fixture.id == fixture_id)
+    if settings.app_data_mode == "demo":
+        query = query.where(Bookmaker.name == "Demo Sportsbook")
+    else:
+        query = query.where(
+            Bookmaker.provider_id == f"live:{settings.odds_region}:{settings.odds_bookmaker_key}"
+        )
+    records = list(db.execute(query))
+    if not records:
+        return []
+    ids = [q.id for q, _, _, _ in records]
+    observations = {}
+    for observation in db.scalars(
+        select(QuoteObservation)
+        .where(QuoteObservation.quote_id.in_(ids))
+        .order_by(QuoteObservation.observed_at.desc())
+    ):
+        observations.setdefault(observation.quote_id, observation)
+    published = {row["quote_id"]: row for row in all_rows(db, quote_ids=ids, unique_quotes=True)}
+    team_ids = {
+        team_id for _, fixture, _, _ in records for team_id in (fixture.home_id, fixture.away_id)
+    }
+    teams = {team.id: team for team in db.scalars(select(Team).where(Team.id.in_(team_ids)))}
     at = now()
     latest_sweep = db.scalar(
         select(IngestionRun.created_at)
@@ -129,7 +143,6 @@ def current_quotes(db, fixture_id=None):
         )
         .order_by(IngestionRun.created_at.desc())
     )
-    records = list(db.execute(query))
     records.sort(
         key=lambda record: (
             utc(
@@ -182,7 +195,7 @@ def current_quotes(db, fixture_id=None):
             f.kickoff
         ) > at + timedelta(days=14):
             continue
-        home, away = db.get(Team, f.home_id), db.get(Team, f.away_id)
+        home, away = teams[f.home_id], teams[f.away_id]
         row = published.get(
             q.id,
             {
@@ -213,15 +226,45 @@ def current_quotes(db, fixture_id=None):
     return result
 
 
-def match_row(db, f, quotes, include_markets=True):
-    prediction = db.scalar(
+def match_context(db, fixtures):
+    ids = [fixture.id for fixture in fixtures]
+    team_ids = {team_id for fixture in fixtures for team_id in (fixture.home_id, fixture.away_id)}
+    predictions = {}
+    for prediction in db.scalars(
         select(Prediction)
-        .where(Prediction.fixture_id == f.id, Prediction.mode == f.mode)
+        .where(Prediction.fixture_id.in_(ids), Prediction.mode == settings.app_data_mode)
         .order_by(Prediction.generated_at.desc())
+    ):
+        predictions.setdefault(prediction.fixture_id, prediction)
+    return {
+        "predictions": predictions,
+        "teams": {team.id: team for team in db.scalars(select(Team).where(Team.id.in_(team_ids)))},
+        "competitions": {
+            comp.id: comp
+            for comp in db.scalars(
+                select(Competition).where(Competition.id.in_({f.competition_id for f in fixtures}))
+            )
+        },
+    }
+
+
+def match_row(db, f, quotes, include_markets=True, context=None, market_key="all"):
+    prediction = (
+        context["predictions"].get(f.id)
+        if context is not None
+        else db.scalar(
+            select(Prediction)
+            .where(Prediction.fixture_id == f.id, Prediction.mode == f.mode)
+            .order_by(Prediction.generated_at.desc())
+        )
     )
     if prediction and utc(prediction.fixture_kickoff) != utc(f.kickoff):
         prediction = None
-    home, away = db.get(Team, f.home_id), db.get(Team, f.away_id)
+    home, away = (
+        (context["teams"][f.home_id], context["teams"][f.away_id])
+        if context is not None
+        else (db.get(Team, f.home_id), db.get(Team, f.away_id))
+    )
     catalog = markets(prediction) if include_markets else []
     if include_markets and prediction is None:
         for key, name in [("1x2", "Match result · 1X2"), ("totals", "Total goals · 2.5")]:
@@ -235,6 +278,8 @@ def match_row(db, f, quotes, include_markets=True):
             }
             if outcomes:
                 catalog.append({"key": key, "name": name, "group": "Popular", "outcomes": outcomes})
+    if market_key != "all":
+        catalog = [market for market in catalog if market["key"] == market_key]
     for market in catalog:
         market["picks"] = []
         alternatives = market.pop("outcomes")
@@ -292,7 +337,11 @@ def match_row(db, f, quotes, include_markets=True):
         "away": away.name,
         "home_logo": logo(home),
         "away_logo": logo(away),
-        "competition": db.get(Competition, f.competition_id).name,
+        "competition": (
+            context["competitions"][f.competition_id]
+            if context is not None
+            else db.get(Competition, f.competition_id)
+        ).name,
         "competition_id": f.competition_id,
         "kickoff": utc(f.kickoff),
         "status": f.status,
@@ -307,6 +356,8 @@ def matchday(
     team: str = Query("", max_length=80),
     period: str = Query("week", pattern="^(today|tomorrow|week|fortnight)$"),
     league: str = "",
+    summary: bool = False,
+    market: str = Query("all", pattern=r"^(all|1x2|btts|totals|half_totals_0\.5|double_chance)$"),
     db=Depends(get_db),
 ):
     at = now()
@@ -338,10 +389,11 @@ def matchday(
         query = query.where(Fixture.competition_id == league)
     quotes = current_quotes(db)
     priced = {q["fixture_id"] for q in quotes}
+    fixtures = [f for f in db.scalars(query) if settings.app_data_mode == "demo" or f.id in priced]
+    context = match_context(db, fixtures)
     items = [
-        match_row(db, f, quotes)
-        for f in db.scalars(query)
-        if settings.app_data_mode == "demo" or f.id in priced
+        match_row(db, f, quotes, include_markets=not summary, context=context, market_key=market)
+        for f in fixtures
     ]
     return {
         "items": [r for r in items if team.casefold() in (r["home"] + " " + r["away"]).casefold()],

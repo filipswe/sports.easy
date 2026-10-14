@@ -72,7 +72,8 @@ export function MatchBrowser() {
     setError("");
     setMatches(null);
     api<{ items: MatchRow[] }>(
-      "/matchday?" + new URLSearchParams({ period, team: search, league }),
+      "/matchday?" +
+        new URLSearchParams({ period, team: search, league, market }),
     )
       .then((r) => {
         if (active) setMatches(r.items);
@@ -83,7 +84,7 @@ export function MatchBrowser() {
     return () => {
       active = false;
     };
-  }, [period, search, league]);
+  }, [period, search, league, market]);
   const list = matches
     ? [...matches].sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff))
     : [];
