@@ -328,7 +328,9 @@ class TheOddsAPI:
         # /events is free of odds credits, with its own bounded request ledger.
         if not settings.odds_api_key:
             raise ProviderUnavailable("ODDS_API_KEY is missing; European fixtures unavailable")
-        client = ProviderClient(self.client.db, "the-odds-api-events", 12)
+        client = ProviderClient(
+            self.client.db, "the-odds-api-events", settings.odds_event_daily_budget
+        )
         events = []
         for league in EUROPEAN_COMPETITIONS:
             data = client.get(
