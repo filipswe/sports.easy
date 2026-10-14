@@ -25,6 +25,8 @@ From this checkout, run `.venv/bin/python scripts/preview.py` and open **http://
 
 ## Quick start: Docker Compose
 
+For the planned free non-commercial cloud beta, use the [Vercel/Neon setup](docs/vercel-beta.md). It keeps local databases separate, uses private `.env.beta` configuration and requires hosting/email/owner settings before deployment. Run `.venv/bin/python scripts/check_beta.py` to see missing settings without printing credentials or connecting to services.
+
 Prerequisites: Docker Desktop/Engine with Compose. No provider accounts are needed for demo mode.
 
 ```sh
@@ -156,7 +158,7 @@ Follow the [live signup and activation steps](docs/live-setup.md) to connect act
 
 Read [provider capability, cost and rights notes](docs/providers.md) before enabling live mode. Use the free football-data.org fixture credential (or an entitled API-Football account) and The Odds API credential, a selected region, reviewed display/retention rights, SMTP, HTTPS and a real deployment secret. No credentials are bundled, and live mode never substitutes synthetic data. The adapters have not been tested against paid accounts in this session.
 
-Remaining limits: uncalibrated probabilities, no archival historical odds ingestion or proven real predictive performance, European estimates based on prices where verified history is absent, event-dependent market availability within the free quota, injuries/lineups/xG/standings feeds and payment/betting operations. Chat recognizes the match, requested market and follow-up context from free-form questions, then explains verified facts. Questions are not stored on the server. Dedicated model-input version storage, SQL-based large-archive ranking, shared rate limiting and production observability integration need further work before scale. This MVP uses compact season/market/stat representations instead of building unnecessary unused tables. See the [architecture and actual controls](docs/architecture.md), [model methodology](docs/methodology.md), [deployment/rollback guide](docs/deployment.md) and [verification report](docs/verification.md).
+Remaining limits: uncalibrated probabilities, no archival historical odds ingestion or proven real predictive performance, European estimates based on prices where verified history is absent, event-dependent market availability within the free quota, injuries/lineups/xG/standings feeds and payment/betting operations. Chat recognizes the match, requested market and follow-up context from free-form questions, then explains verified facts. Questions are not stored on the server. Dedicated model-input version storage, SQL-based large-archive ranking, trusted hosted proxy/client identity and production observability integration need further work before scale. Production request limits now use shared database counters. This MVP uses compact season/market/stat representations instead of building unnecessary unused tables. See the [architecture and actual controls](docs/architecture.md), [model methodology](docs/methodology.md), [deployment/rollback guide](docs/deployment.md) and [verification report](docs/verification.md).
 
 ## Troubleshooting
 

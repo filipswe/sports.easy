@@ -69,11 +69,11 @@ const pages: Record<
   privacy: {
     title: "Privacy, in plain language.",
     intro:
-      "Draft policy for local portfolio use. The operator must supply contact details, retention periods and jurisdiction-specific terms before any public commercial release.",
+      "Draft policy for local use. The operator must supply contact details, retention periods and jurisdiction-specific terms before public release.",
     sections: [
       {
         title: "What is stored",
-        body: "Accounts store an email address, Argon2 password hash, verification status, preferences, session references and saved research links. Provider keys remain server-side. No payment, bookmaker-account or gambling transaction information is collected.",
+        body: "Accounts store an email address, Argon2 password hash, verification status, preferences, session references and saved research links. Public request limits store short-lived keyed network-address digests without raw IP addresses. These counters expire after two minutes and are removed on a subsequent successful window reservation or worker cleanup. Provider keys remain server-side. No payment, bookmaker-account or gambling transaction information is collected.",
       },
       {
         title: "Cookies and retention",

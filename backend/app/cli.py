@@ -11,7 +11,9 @@ from .models import AdminAudit, User
 from .providers import ProviderUnavailable
 
 parser = argparse.ArgumentParser(description="sports.easy operations")
-parser.add_argument("command", choices=["seed", "ingest", "evaluate", "promote-admin", "readiness"])
+parser.add_argument(
+    "command", choices=["seed", "ingest", "evaluate", "promote-admin", "readiness", "refresh"]
+)
 parser.add_argument("--email")
 args = parser.parse_args()
 with SessionLocal() as db:
@@ -27,6 +29,21 @@ with SessionLocal() as db:
                 indent=2,
             )
         )
+    elif args.command == "refresh":
+        from .readiness import release_blockers
+        from .worker import tick
+
+        if settings.app_env == "production" and release_blockers():
+            raise SystemExit(
+                "Production configuration incomplete: " + ", ".join(release_blockers())
+            )
+        try:
+            result = tick()
+        except Exception:
+            raise SystemExit("Refresh failed; inspect sanitized application logs") from None
+        print(json.dumps(result))
+        if result["status"] in {"failed", "unavailable"}:
+            raise SystemExit(2)
     elif args.command == "seed":
         if settings.app_data_mode != "demo":
             raise SystemExit("Seed is only available in demo mode")

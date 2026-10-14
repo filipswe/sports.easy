@@ -18,7 +18,7 @@ from .auth import router as auth_router
 from .chat import router as chat_router
 from .config import settings
 from .crests import team_logo
-from .db import get_db, now, utc
+from .db import SessionLocal, get_db, now, utc
 from .evaluation import metrics
 from .matchday import router as matchday_router
 from .model import VERSION, no_vig
@@ -113,23 +113,37 @@ async def controls(request: Request, call_next):
     category = (
         "auth-mutation" if "/auth/" in request.url.path and request.method != "GET" else "research"
     )
-    key = (ip, category)
-    queue = requests_by_ip[key]
-    stamp = time.monotonic()
-    while queue and queue[0] < stamp - 60:
-        queue.popleft()
     limit = 20 if category == "auth-mutation" else 180
-    if len(queue) >= limit:
+    if settings.app_env == "production":
+        from .rate_limits import reserve_request
+
+        try:
+            with SessionLocal() as db:
+                allowed = reserve_request(db, ip, category, now(), limit)
+        except Exception:
+            logger.error(json.dumps({"event": "rate_limit_unavailable"}))
+            return JSONResponse(
+                {"error": {"message": "Service temporarily unavailable"}}, status_code=503
+            )
+    else:
+        key = (ip, category)
+        queue = requests_by_ip[key]
+        stamp = time.monotonic()
+        while queue and queue[0] < stamp - 60:
+            queue.popleft()
+        allowed = len(queue) < limit
+        if allowed:
+            queue.append(stamp)
+        if len(requests_by_ip) > 10000:
+            for old_key in list(requests_by_ip):
+                if not requests_by_ip[old_key] or requests_by_ip[old_key][-1] < stamp - 60:
+                    del requests_by_ip[old_key]
+    if not allowed:
         return JSONResponse(
             {"error": {"message": "Too many requests. Try again in a minute."}},
             status_code=429,
             headers={"Retry-After": "60"},
         )
-    queue.append(stamp)
-    if len(requests_by_ip) > 10000:
-        for old_key in list(requests_by_ip):
-            if not requests_by_ip[old_key] or requests_by_ip[old_key][-1] < stamp - 60:
-                del requests_by_ip[old_key]
     try:
         response = await call_next(request)
     except Exception:

@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from app.chat import reserve_chat
 from app.db import SessionLocal, engine, now
 from app.models import Fixture, Job, Publication, QuoteObservation, Recommendation
+from app.rate_limits import reserve_request
 from app.worker import tick
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import DBAPIError
@@ -49,6 +50,15 @@ def concurrent_reservation(actor):
 
 with ThreadPoolExecutor(max_workers=6) as pool:
     assert sum(pool.map(concurrent_reservation, range(6))) == 1
+
+
+def concurrent_request(_):
+    with SessionLocal() as db:
+        return reserve_request(db, "shared-client", "auth-mutation", at, 3)
+
+
+with ThreadPoolExecutor(max_workers=6) as pool:
+    assert sum(pool.map(concurrent_request, range(12))) == 3
 print(
-    "PostgreSQL: migrations, persisted seed, immutable SQL triggers, advisory lock, duplicate-job and concurrent chat quota checks passed"
+    "PostgreSQL: migrations, persisted seed, immutable SQL triggers, advisory lock, duplicate-job and concurrent chat/request quota checks passed"
 )

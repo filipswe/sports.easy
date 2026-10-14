@@ -1,7 +1,10 @@
+import os
 from datetime import UTC, datetime
 
 from sqlalchemy import create_engine, event
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.pool import NullPool
 
 from .config import settings
 
@@ -18,10 +21,18 @@ class Base(DeclarativeBase):
     pass
 
 
+database_url = make_url(settings.database_url)
+if database_url.drivername in {"postgres", "postgresql"}:
+    database_url = database_url.set(drivername="postgresql+psycopg")
 engine = create_engine(
-    settings.database_url,
+    database_url,
     pool_pre_ping=True,
     connect_args={"check_same_thread": False} if settings.database_url.startswith("sqlite") else {},
+    **(
+        {"poolclass": NullPool}
+        if os.environ.get("VERCEL") == "1" and database_url.drivername.startswith("postgresql")
+        else {}
+    ),
 )
 if settings.database_url.startswith("sqlite"):
 

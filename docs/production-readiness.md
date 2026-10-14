@@ -44,7 +44,7 @@ Run configuration checks from `backend`:
 
 Production startup requires live mode, PostgreSQL, genuine provider credentials, retention approval, HTTPS/secure cookies, SMTP with a valid sender, a private session secret, a sufficient odds budget, a bounded cache, `OPERATOR_NAME` and `SUPPORT_EMAIL`. This is a configuration gate, not proof that the following launch work is complete:
 
-- Configure hosting/TLS and reverse-proxy trusted addresses, request-size limits, edge rate limits and monitoring. Existing general API rate limiting is per process; chat budgets are shared in the database.
+- Configure hosting/TLS and reverse-proxy trusted addresses, request-size limits, edge rate limits and monitoring. Production API request limits and chat budgets use shared database counters; development limits remain per process. Hosted peer/client-IP behavior still needs validation.
 - Verify email registration/reset delivery and domain authentication. Local verification links are restricted to development on loopback origins.
 - Set operator-specific privacy, terms, age/jurisdiction rules and provider/logo display rights. Current legal pages remain drafts. Obtain a policy review before public release.
 - Exercise backup restoration and migration/rollback on staging PostgreSQL. Migrations must finish before API/worker start; retain append-only records. Run only one worker/manual ingestion at a time.

@@ -31,13 +31,13 @@ def tick():
             fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             os.close(descriptor)
-            return
+            return {"status": "busy"}
     try:
         # Dedicated connection holds a session-level lock through all ingestion commits.
         with engine.connect() as lock:
             postgres = engine.dialect.name == "postgresql"
             if postgres and not lock.scalar(text("SELECT pg_try_advisory_lock(719482)")):
-                return
+                return {"status": "busy"}
             try:
                 with SessionLocal() as db:
                     db.execute(delete(AuthToken).where(AuthToken.expires_at < now()))
@@ -60,7 +60,7 @@ def tick():
                         backfill_crests(db)
                         publish_recommendations(db)
                         db.commit()
-                        return
+                        return {"status": "cached"}
                     # A previous running job after obtaining the exclusive lock was interrupted.
                     for old in db.scalars(
                         select(Job).where(Job.status == "running", Job.id != job.id)
@@ -108,6 +108,7 @@ def tick():
                         json.dumps({"event": "ingestion", "job": job.id, "status": job.status}),
                         flush=True,
                     )
+                    return {"status": job.status, "job_id": job.id}
             finally:
                 if postgres:
                     lock.execute(text("SELECT pg_advisory_unlock(719482)"))

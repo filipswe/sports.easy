@@ -1,4 +1,6 @@
 .env
+.env.beta
+.vercel/
 .preview/
 .venv/
 __pycache__/
