@@ -13,10 +13,10 @@ jobs:
             --env POSTGRES_PASSWORD=ci-only-password --env POSTGRES_USER=sports \
             --env POSTGRES_DB=sports_easy postgres:17-alpine
           for attempt in $(seq 1 30); do
-            if docker exec sports-easy-ci-db pg_isready -U sports -d sports_easy; then break; fi
+            if docker exec sports-easy-ci-db pg_isready -h 127.0.0.1 -U sports -d sports_easy; then break; fi
             sleep 1
           done
-          docker exec sports-easy-ci-db pg_isready -U sports -d sports_easy
+          docker exec sports-easy-ci-db pg_isready -h 127.0.0.1 -U sports -d sports_easy
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
