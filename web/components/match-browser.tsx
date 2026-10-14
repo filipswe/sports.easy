@@ -29,9 +29,12 @@ export function OutcomeButton({
     short && pick.market === "1x2"
       ? { home: "1", draw: "X", away: "2" }[pick.outcome] || pick.outcome
       : short && (pick.market.startsWith("totals") || pick.market === "btts")
-        ? { over: "Over", under: "Under", yes: "Yes", no: "No" }[
+        ? ({ over: "Over", under: "Under", yes: "Yes", no: "No" }[
             pick.outcome
-          ] || pick.outcome
+          ] || pick.outcome) +
+          (pick.market.startsWith("totals")
+            ? ` ${pick.market === "totals" ? "2.5" : pick.market.split("_")[1]}`
+            : "")
         : pickLabel(pick);
   return (
     <button
@@ -56,12 +59,17 @@ export function MatchBrowser() {
     search = params.get("team") || "",
     market = params.get("market") || "1x2",
     goalLine = params.get("line") || "2.5",
+    halfLine =
+      params.get("half_line") || (meta?.mode === "live" ? "1.5" : "0.5"),
     league = params.get("league") || "";
   const [input, setInput] = useState(search),
     [matches, setMatches] = useState<MatchRow[] | null>(null),
     [error, setError] = useState("");
-  const selectedMarket =
-    market === "totals" && goalLine !== "2.5" ? `totals_${goalLine}` : market;
+  const selectedMarket = market.startsWith("half_totals")
+    ? `half_totals_${halfLine}`
+    : market === "totals" && goalLine !== "2.5"
+      ? `totals_${goalLine}`
+      : market;
   const [loadingMore, setLoadingMore] = useState(false);
   async function loadMore() {
     setLoadingMore(true);
@@ -203,7 +211,13 @@ export function MatchBrowser() {
               ["double_chance", "Double chance"],
             ].map(([v, l]) => (
               <button
-                className={market === v ? "active" : ""}
+                className={
+                  market === v ||
+                  (v.startsWith("half_totals") &&
+                    market.startsWith("half_totals"))
+                    ? "active"
+                    : ""
+                }
                 key={v}
                 onClick={() => update("market", v)}
               >
@@ -211,12 +225,17 @@ export function MatchBrowser() {
               </button>
             ))}
           </div>
-          {market === "totals" && (
+          {(market === "totals" || market.startsWith("half_totals")) && (
             <label className="goal-line-control">
               Goal line
               <select
-                value={goalLine}
-                onChange={(e) => update("line", e.target.value)}
+                value={market === "totals" ? goalLine : halfLine}
+                onChange={(e) =>
+                  update(
+                    market === "totals" ? "line" : "half_line",
+                    e.target.value,
+                  )
+                }
               >
                 {Array.from({ length: 10 }, (_, n) => `${n + 0.5}`).map(
                   (line) => (
@@ -244,14 +263,20 @@ export function MatchBrowser() {
           ) : !matches ? (
             <Skeletons />
           ) : !list.length ? (
-            <Empty title="No matches found">
+            <Empty
+              title={
+                meta?.mode === "live" && market !== "1x2"
+                  ? "No quoted matches for this market"
+                  : "No matches found"
+              }
+            >
               <button
                 className="text-button"
                 onClick={() => router.replace("/predictions")}
               >
                 Reset filters
               </button>{" "}
-              or try another date.
+              or try another goal line, market or date.
             </Empty>
           ) : (
             <div className="match-list">
@@ -305,7 +330,7 @@ export function MatchBrowser() {
                           ))
                         ) : (
                           <span className="hint">
-                            This market is unavailable
+                            No sportsbook quote for this market
                           </span>
                         )}
                       </div>
@@ -326,8 +351,7 @@ export function MatchBrowser() {
             {meta?.mode === "demo"
               ? "Sample odds from Demo Sportsbook."
               : "Prices from the connected sportsbook."}{" "}
-            A dash means no price is available. Tap a team for form, stats and
-            all markets.
+            Tap a team for form, stats and all markets.
           </p>
           {meta?.mode === "live" && market !== "1x2" && (
             <button

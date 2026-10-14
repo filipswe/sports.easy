@@ -1,5 +1,7 @@
 # Verification report
 
+Latest feature-branch preview: **http://127.0.0.1:3101**. The existing Docker app on port 3000 is unchanged by this milestone. See the final section for current validation; earlier sections record prior releases.
+
 Local verification on 13 October 2026, after the matchday redesign. Provider credentials have not been supplied; the running local app uses explicitly labelled sample fixtures and odds.
 
 ## Completed checks
@@ -38,3 +40,11 @@ The running local PostgreSQL/Docker app uses football-data.org Free fixtures/res
 The homepage displays five recommendations in a 24-hour window, ordered by kickoff. Stronger picks arriving through new coverage can enter the shortlist; earlier official records retain their original price and probability in Performance. Daily-feed suggestions can use a snapshot fetched within 24 hours, always retaining its source update time and outdated-price label. Current-value filters still reject stale quotes.
 
 Final checks: 85 backend tests and five Chromium end-to-end tests passed; Ruff, web lint/typecheck and production Docker builds passed. Live-browser checks verified ten loaded featured club crests, 48 chronological matches, five league choices, real-price parlay analysis, real recent form, separately fitted first-half estimates and mobile layouts without overflow or runtime errors. The additive crest migration preserved existing accounts and sample records. Today's worker reserved ten odds units and did not repeat the bootstrap sweep. Provider keys were absent from UI responses and tracked files.
+
+## Expanded markets and natural-language analyst — 14 October 2026
+
+On `feat/production-readiness`, the additional-market implementation and crest coverage are committed in `4d12e9e` and `b88c96c`. The latest local suite passes 121 backend tests and seven Chromium workflows, Ruff, ESLint, TypeScript and the production web build. The affected 12 natural-language chat tests were rerun after correcting AI focus classification. The original milestone had two dedicated review rounds; these requested corrections were self-reviewed for source identity, price calculations, quota/cache behavior, half-time settlement, bounded chat input and secrets.
+
+Actual isolated live verification: 141 priced fixtures within 14 days; all 184 team images on the seven-day match list loaded successfully, with no missing model-percentage labels. A six-event Pinnacle detail refresh returned six BTTS/double-chance matches, five first-half 1.5 matches, six full-time 3.5 matches, and offered 1.5/4.5 lines. Chromium verified working selections, line-specific prices and mobile width of 390 without overflow or runtime errors. Groq recognized Feyenoord vs Como from a free-form question and returned its actual over-3.5 quote. Unknown or unquoted selections are never given fabricated prices.
+
+The free quota cannot populate every alternate line for every event. Missing European history still suppresses model estimates. The public launch requirements in `production-readiness.md` remain open; this milestone does not merge or deploy. Restart the isolated preview with `.venv/bin/python scripts/preview.py --live --ai`.

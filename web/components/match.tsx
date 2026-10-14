@@ -374,9 +374,9 @@ export function MatchDetail({ id }: { id: string }) {
                 ))}
               </div>
               <p className="fine-print">
-                {match.mode === "demo" ? "Sample data. " : ""}A dash means an
-                odds quote is unavailable; you can still analyze the pick and
-                enter your own price in the parlay builder.
+                {match.mode === "demo" ? "Sample data. " : ""}A dash means there
+                is no sportsbook quote for that selection; you can analyze the
+                pick and enter your own price in the parlay builder.
               </p>
             </>
           ) : tab === "Form & stats" ? (
@@ -453,7 +453,9 @@ export function MatchDetail({ id }: { id: string }) {
               First-half estimates use a separate fit to recorded half-time
               scores. Injury and lineup information is not included.
             </p>
-            <p>Model: {detail.prediction?.model_version || "Unavailable"}</p>
+            {detail.prediction && (
+              <p>Model: {detail.prediction.model_version}</p>
+            )}
           </details>
         </div>
         <ParlayPanel />

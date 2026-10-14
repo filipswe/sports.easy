@@ -1,6 +1,6 @@
 # Connect real fixtures and bookmaker odds for free
 
-The free setup uses **football-data.org** for real fixtures/results and **The Odds API** for Pinnacle prices. API-Football's Free key can remain saved, but this setup does not use it because its current-season request was rejected. Credentials stay in the ignored `.env`, never GitHub or browser code.
+The free setup uses **football-data.org** for real fixtures/results and **The Odds API** for Pinnacle prices. API-Football's Free key can remain saved, but it is optional for quota-bound club crest lookup; current-season fixtures use football-data.org because the API-Football Free account rejected them. Credentials stay in the ignored `.env`, never GitHub or browser code.
 
 1. Create a [football-data.org Free account](https://www.football-data.org/client/register). Its [free coverage](https://www.football-data.org/coverage) includes Premier League, La Liga, Serie A, Bundesliga and Ligue 1. Scores and schedules are delayed; this is a pre-match app. The token arrives by email. The account checked on 13 October 2026 accepted 2026 and 2025 Premier League matches, including halftime scores. Check each account's history entitlement rather than assuming it.
 2. Get a free Starter key from [The Odds API](https://the-odds-api.com/). The verified account supplied Pinnacle Premier League 1X2 and total prices. A valid key does not guarantee every event or market has a price.
@@ -19,7 +19,8 @@ ODDS_REGION=eu
 POLL_SECONDS=86400
 ODDS_POLL_SECONDS=259200
 PROVIDER_DAILY_BUDGET=80
-ODDS_DAILY_BUDGET=20
+ODDS_DAILY_BUDGET=64
+ODDS_EVENT_DAILY_BUDGET=32
 ODDS_MONTHLY_BUDGET=450
 ```
 
@@ -40,7 +41,11 @@ The public interface uses the label **Current odds** and omits price-age badges 
 
 The football refresh uses ten requests: current and previous seasons across five leagues. Its local ten-request-per-minute cap protects the Free tier. A denied previous season can be skipped, but current-season denial is never hidden. The model abstains below 40 league results or eight results for a club. Missing halftime scores disable the separate first-half estimate.
 
-Current live prices cover 1X2 and offered totals at 2.5. BTTS, first-half and other prices require a per-event integration and additional credits; unsupported prices remain blank. Model probabilities and entered odds are not bookmaker quotes.
+Base live sweeps cover 1X2 and offered totals at 2.5. Opening another market or a match requests cached per-event Pinnacle BTTS, double-chance, alternate full-time totals and first-half totals. Each half-goal line from 0.5 through 9.5 has its own actual quote; whole/quarter Asian lines are excluded because push and split settlement are not implemented. Not every event offers every line. Live views hide unquoted selections. Model probabilities and entered odds are not bookmaker quotes.
+
+Detail requests cost up to four credits per event, cache for three days and fetch at most six matches per browsing request. “Find more priced matches” requests the next uncached batch. The shared daily/monthly guards also cover these requests, so the free allowance cannot provide every expanded market for every match at public scale. Budget exhaustion preserves valid cached quotes without inventing prices.
+
+The current European catalog has 63 reviewed club crests cached under `web/public/clubs`, with source identities in `backend/app/club_crests.json`. An optional API-Football key lets the worker resolve up to four future missing crests per tick, with a ten-request/minute guard and seven-day attempt cache; ambiguous club identities are rejected.
 
 ## Accounts and existing records
 
@@ -52,4 +57,4 @@ For an existing API-Football subscription, choose `FOOTBALL_PROVIDER=api-footbal
 
 ## Current milestone overrides
 
-Use `POLL_SECONDS=86400`, `ODDS_POLL_SECONDS=259200`, `ODDS_DAILY_BUDGET=20` and `ODDS_MONTHLY_BUDGET=450` for eight competitions. The earlier daily five-league budget guidance is superseded. Add the optional free Groq token as `GROQ_API_KEY` only in ignored `.env`. Follow [the isolated preview and release checklist](production-readiness.md) before updating an existing installation.
+Use `POLL_SECONDS=86400`, `ODDS_POLL_SECONDS=259200`, `ODDS_DAILY_BUDGET=64`, `ODDS_EVENT_DAILY_BUDGET=32` and `ODDS_MONTHLY_BUDGET=450` for eight competitions. The earlier daily five-league budget guidance is superseded. Add the optional free Groq token as `GROQ_API_KEY` only in ignored `.env`. Follow [the isolated preview and release checklist](production-readiness.md) before updating an existing installation.

@@ -3,7 +3,7 @@
 import hashlib
 import json
 from datetime import timedelta
-from typing import Literal
+from typing import Annotated, Literal
 
 import httpx
 from fastapi import APIRouter, Depends, Request
@@ -22,7 +22,12 @@ router = APIRouter(prefix="/api/chat", tags=["analyst"])
 
 
 class ChatInput(BaseModel):
-    fixture_id: str = Field(min_length=1, max_length=36)
+    model_config = ConfigDict(str_strip_whitespace=True)
+    fixture_id: str | None = Field(None, min_length=1, max_length=36)
+    context_fixture_id: str | None = Field(None, min_length=1, max_length=36)
+    previous_questions: list[Annotated[str, Field(max_length=600)]] = Field(
+        default_factory=list, max_length=2
+    )
     question: str = Field(min_length=2, max_length=600)
 
 
@@ -151,6 +156,10 @@ def choose_evidence(question, facts):
 
 @router.post("")
 def analyst(body: ChatInput, request: Request, db=Depends(get_db)):
+    if body.fixture_id is None:
+        from .chat_resolution import natural_answer
+
+        return natural_answer(body, request, db)
     fixture = require_fixture(db, body.fixture_id)
     match, facts = evidence_for(db, fixture, current_quotes(db, fixture.id))
     choice, source = choose_evidence(body.question, facts), "data"

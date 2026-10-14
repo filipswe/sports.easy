@@ -1,51 +1,43 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { ArrowUpRight, MessageCircle, Send } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import type { MatchRow } from "@/lib/matchday";
 
-type Answer = { label: string; answer: string; notice: string; match: string };
+type Answer = {
+  label: string;
+  answer: string;
+  notice: string;
+  match: string | null;
+  fixture_id: string | null;
+};
 
 export function AnalystChat() {
-  const [matches, setMatches] = useState<MatchRow[]>([]);
-  const [fixture, setFixture] = useState("");
+  const [context, setContext] = useState<string | null>(null);
+  const [previous, setPrevious] = useState<string[]>([]);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<Answer | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  useEffect(() => {
-    let active = true;
-    api<{ items: MatchRow[] }>("/matchday?period=fortnight&summary=true")
-      .then(({ items }) => {
-        if (!active) return;
-        setMatches(items);
-        setFixture(items[0]?.id || "");
-      })
-      .catch(() => {
-        if (active) setError("Match data is temporarily unavailable.");
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
   async function ask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy || !fixture || question.trim().length < 2) return;
+    if (busy || question.trim().length < 2) return;
     setBusy(true);
     setError("");
     setAnswer(null);
     try {
-      setAnswer(
-        await api<Answer>("/chat", {
-          method: "POST",
-          body: JSON.stringify({
-            fixture_id: fixture,
-            question: question.trim(),
-          }),
+      const result = await api<Answer>("/chat", {
+        method: "POST",
+        body: JSON.stringify({
+          question: question.trim(),
+          context_fixture_id: context,
+          previous_questions: previous,
         }),
-      );
+      });
+      setAnswer(result);
+      setContext(result.fixture_id);
+      setPrevious((questions) => [...questions, question.trim()].slice(-2));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to answer. Try again.");
     } finally {
@@ -66,8 +58,8 @@ export function AnalystChat() {
           <br />A clearer decision.
         </h2>
         <p>
-          Ask about the odds, recent form or why the model favors a pick. Start
-          with a match.
+          Ask about a team, a match or a pick in your own words. Get current
+          prices, recent form and the reasons behind the model’s view.
         </p>
         <Link href="/parlays" className="text-link">
           Ready to combine your picks? <ArrowUpRight size={16} />
@@ -75,25 +67,6 @@ export function AnalystChat() {
       </div>
       <div className="analyst-card panel">
         <form onSubmit={ask}>
-          <label htmlFor="analyst-match">Your match</label>
-          <select
-            id="analyst-match"
-            value={fixture}
-            disabled={busy || !matches.length}
-            onChange={(e) => {
-              setFixture(e.target.value);
-              setAnswer(null);
-            }}
-          >
-            {!matches.length && (
-              <option value="">No priced matches available yet</option>
-            )}
-            {matches.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.home} vs {m.away} · {m.competition}
-              </option>
-            ))}
-          </select>
           <label htmlFor="analyst-question">What would you like to know?</label>
           <textarea
             id="analyst-question"
@@ -103,14 +76,22 @@ export function AnalystChat() {
             minLength={2}
             rows={3}
             required
-            placeholder="Why does the model favor this pick?"
+            placeholder="What do you think of Arsenal to win their next game?"
             disabled={busy}
           />
           <div className="analyst-prompts">
             {[
-              "Why does the model favor this pick?",
-              "What is the recent form?",
-              "What are the current odds?",
+              ...(context
+                ? [
+                    "Why does the model favor this pick?",
+                    "What is the recent form?",
+                    "What are the current odds?",
+                  ]
+                : [
+                    "What are the odds for Arsenal’s next game?",
+                    "Explain BTTS",
+                    "What should I consider for a parlay?",
+                  ]),
             ].map((q) => (
               <button
                 type="button"
@@ -125,7 +106,7 @@ export function AnalystChat() {
           <button
             className="button primary"
             type="submit"
-            disabled={busy || !fixture || question.trim().length < 2}
+            disabled={busy || question.trim().length < 2}
           >
             <Send size={15} />{" "}
             {busy ? "Checking match insight…" : "Ask our analyst"}
@@ -140,7 +121,14 @@ export function AnalystChat() {
           {answer && (
             <div className="analyst-answer">
               <span className="badge green-badge">{answer.label}</span>
-              <h3>{answer.match}</h3>
+              {answer.match && (
+                <Link
+                  href={`/matches/${answer.fixture_id}`}
+                  className="text-link"
+                >
+                  {answer.match} <ArrowUpRight size={15} />
+                </Link>
+              )}
               <p>{answer.answer}</p>
               <small>{answer.notice}</small>
             </div>
@@ -148,8 +136,9 @@ export function AnalystChat() {
         </div>
         <p className="fine-print">
           AI uses verified match facts when available; data-backed answers stay
-          available otherwise. Your question is sent to our AI provider for
-          analysis. Sample mode uses sample data.
+          available otherwise. Your question and up to two previous questions
+          are sent to our AI provider to understand the match and topic. Sample
+          mode uses sample data.
         </p>
       </div>
     </section>
