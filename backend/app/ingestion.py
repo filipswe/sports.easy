@@ -6,7 +6,7 @@ from sqlalchemy import select
 from .config import settings
 from .crests import safe_crest
 from .db import now, utc
-from .leagues import BY_SPORT, LEAGUES
+from .leagues import BY_SPORT, EUROPEAN_COMPETITIONS, LEAGUES
 from .model import VERSION, outcome_won, predict
 from .models import (
     Bookmaker,
@@ -18,6 +18,7 @@ from .models import (
     ProviderMapping,
     Publication,
     Quote,
+    QuoteObservation,
     Settlement,
     Team,
 )
@@ -89,6 +90,10 @@ def upsert_fixtures(db, records, mode, fetched):
             item["home_goals"],
             item["away_goals"],
         )
+        result_changed = result_changed or (fixture.home_half_goals, fixture.away_half_goals) != (
+            item.get("home_half_goals"),
+            item.get("away_half_goals"),
+        )
         for field in ["kickoff", "status", "venue", "home_goals", "away_goals"]:
             setattr(fixture, field, item[field])
         for field in ["home_half_goals", "away_half_goals"]:
@@ -101,6 +106,99 @@ def upsert_fixtures(db, records, mode, fetched):
                 item["kickoff"] + timedelta(hours=2) if mode == "demo" else fetched
             )
     db.flush()
+
+
+def upsert_european_events(db, events, fetched):
+    """Real bookmaker event identities, without inventing regulation results or training data."""
+    existing_teams = list(db.scalars(select(Team)))
+    aliases = {
+        m.external_id.casefold(): m.entity_id
+        for m in db.scalars(
+            select(ProviderMapping).where(
+                ProviderMapping.provider == "the-odds-api", ProviderMapping.entity_type == "team"
+            )
+        )
+    }
+    active = set()
+    for event in events:
+        league = BY_SPORT.get(event.get("sport_key"))
+        if league not in EUROPEAN_COMPETITIONS:
+            continue
+        kickoff = parse_time(event["commence_time"])
+        if not fetched < kickoff <= fetched + timedelta(days=14):
+            continue
+        key = f"the-odds-api:{league.id}:{settings.season}"
+        comp = db.scalar(select(Competition).where(Competition.provider_id == key))
+        if comp is None:
+            comp = Competition(
+                provider_id=key, name=league.name, season=settings.season, mode="live"
+            )
+            db.add(comp)
+            db.flush()
+        teams = []
+        for side in ("home_team", "away_team"):
+            name = event[side]
+            candidates = [
+                t
+                for t in existing_teams
+                if t.provider_id.startswith(settings.football_provider + ":")
+                and t.name.casefold() == name.casefold()
+            ]
+            team = (
+                db.get(Team, aliases[name.casefold()])
+                if name.casefold() in aliases
+                else candidates[0]
+                if len(candidates) == 1
+                else None
+            )
+            if team is None:
+                team_key = "the-odds-api:" + fingerprint(name.casefold())[:40]
+                team = db.scalar(select(Team).where(Team.provider_id == team_key))
+                if team is None:
+                    team = Team(provider_id=team_key, name=name)
+                    db.add(team)
+                    db.flush()
+            teams.append(team.id)
+        key = "the-odds-api:" + event["id"]
+        active.add(key)
+        fixture = db.scalar(select(Fixture).where(Fixture.provider_id == key))
+        if fixture is None:
+            fixture = Fixture(
+                provider_id=key,
+                competition_id=comp.id,
+                home_id=teams[0],
+                away_id=teams[1],
+                mode="live",
+            )
+            db.add(fixture)
+        elif (fixture.home_id, fixture.away_id) != tuple(teams):
+            fixture.status = "unconfirmed"
+            continue
+        fixture.kickoff, fixture.status, fixture.fetched_at = kickoff, "scheduled", fetched
+    # Missing events are unavailable, not fabricated cancellations or final scores.
+    for fixture in db.scalars(
+        select(Fixture).where(
+            Fixture.provider_id.startswith("the-odds-api:"),
+            Fixture.kickoff > fetched,
+            Fixture.kickoff <= fetched + timedelta(days=14),
+        )
+    ):
+        if fixture.provider_id not in active:
+            fixture.status = "unconfirmed"
+    db.flush()
+
+
+def odds_refresh_due(db, at=None):
+    at = at or now()
+    scope = f"odds-refresh:{settings.odds_region}:{settings.odds_bookmaker_key}"
+    latest = db.scalar(
+        select(IngestionRun)
+        .where(IngestionRun.provider == scope, IngestionRun.status == "complete")
+        .order_by(IngestionRun.created_at.desc())
+    )
+    return latest is None or (at - utc(latest.created_at)).total_seconds() >= max(
+        60, settings.odds_poll_seconds
+    )
 
 
 def ingest(db):
@@ -145,6 +243,19 @@ def ingest(db):
         from .team_aliases import install_football_data_aliases
 
         install_football_data_aliases(db)
+    if mode == "live":
+        try:
+            upsert_european_events(db, TheOddsAPI(db).european_events(), fetched)
+        except ProviderUnavailable:
+            db.add(
+                IngestionRun(
+                    provider="european-fixtures",
+                    status="unavailable",
+                    detail={
+                        "message": "European event feed unavailable; existing records retained"
+                    },
+                )
+            )
     db.commit()
     prefix = "demo" if mode == "demo" else settings.football_provider
     fixtures = list(
@@ -167,7 +278,17 @@ def ingest(db):
         league_history = histories.get(competitions[fixture.competition_id], [])
         hsh = fingerprint(
             [
-                [(f.id, f.home_goals, f.away_goals, f.result_available_at) for f in league_history],
+                [
+                    (
+                        f.id,
+                        f.home_goals,
+                        f.away_goals,
+                        f.home_half_goals,
+                        f.away_half_goals,
+                        f.result_available_at,
+                    )
+                    for f in league_history
+                ],
                 fixture.kickoff,
                 fetched.date(),
                 VERSION,
@@ -200,9 +321,35 @@ def ingest(db):
     db.commit()
     settle(db)
     db.commit()
-    if mode == "live":
+    refresh = mode == "live" and odds_refresh_due(db, fetched)
+    if refresh:
         events = TheOddsAPI(db).odds()
-    rejected = store_odds(db, events, fetched=fetched)
+    rejected = store_odds(db, events, fetched=fetched, observed=True)
+    if refresh:
+        db.add(
+            IngestionRun(
+                provider=f"odds-refresh:{settings.odds_region}:{settings.odds_bookmaker_key}",
+                status="complete",
+                created_at=fetched,
+                detail={"events": len(events)},
+            )
+        )
+    # Reuse available recorded quotes with today's new prediction without altering quote ages.
+    from .matchday import current_quotes
+
+    for row in current_quotes(db):
+        quote = db.get(Quote, row["quote_id"])
+        prediction = db.scalar(
+            select(Prediction)
+            .where(Prediction.fixture_id == quote.fixture_id)
+            .order_by(Prediction.generated_at.desc())
+        )
+        if prediction and not db.scalar(
+            select(Publication.id).where(
+                Publication.prediction_id == prediction.id, Publication.quote_id == quote.id
+            )
+        ):
+            db.add(Publication(prediction_id=prediction.id, quote_id=quote.id))
     settle(db)
     db.add(
         IngestionRun(
@@ -219,17 +366,11 @@ def ingest(db):
     return {"fixtures": len(records), "unmatched_events": rejected, "mode": mode}
 
 
-def store_odds(db, events, fetched=None):
+def store_odds(db, events, fetched=None, observed=False):
     """Import recorded provider snapshots without fetching or refreshing their source age."""
     mode, fetched = settings.app_data_mode, fetched or now()
     prefix = "demo" if mode == "demo" else settings.football_provider
-    fixtures = list(
-        db.scalars(
-            select(Fixture).where(
-                Fixture.mode == mode, Fixture.provider_id.startswith(prefix + ":")
-            )
-        )
-    )
+    fixtures = list(db.scalars(select(Fixture).where(Fixture.mode == mode)))
     competitions = {c.id: c.provider_id.split(":")[1] for c in db.scalars(select(Competition))}
     teams = list(db.scalars(select(Team)))
     names = {}
@@ -253,8 +394,16 @@ def store_odds(db, events, fetched=None):
         candidates = [
             f for f in fixtures if league and competitions[f.competition_id] == str(league.id)
         ]
-        fixture = match_fixture(event, candidates, names, aliases)
-        if not fixture or fixture.status != "scheduled" or utc(fixture.kickoff) <= now():
+        fixture = next(
+            (f for f in candidates if f.provider_id == "the-odds-api:" + event["id"]), None
+        ) or match_fixture(event, candidates, names, aliases)
+        if (
+            not fixture
+            or fixture.status != "scheduled"
+            or utc(fixture.kickoff) <= now()
+            or abs((utc(fixture.kickoff) - parse_time(event["commence_time"])).total_seconds())
+            > 900
+        ):
             rejected += 1
             continue
         for book in event.get("bookmakers", []):
@@ -313,6 +462,19 @@ def store_odds(db, events, fetched=None):
                         )
                         db.add(quote)
                         db.flush()
+                    if observed and not db.scalar(
+                        select(QuoteObservation.id).where(
+                            QuoteObservation.quote_id == quote.id,
+                            QuoteObservation.observed_at == fetched,
+                        )
+                    ):
+                        db.add(
+                            QuoteObservation(
+                                quote_id=quote.id,
+                                observed_at=fetched,
+                                fixture_kickoff=fixture.kickoff,
+                            )
+                        )
                     prediction = db.scalar(
                         select(Prediction)
                         .where(Prediction.fixture_id == fixture.id)

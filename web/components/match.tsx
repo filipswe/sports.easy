@@ -156,7 +156,7 @@ export function MatchDetail({ id }: { id: string }) {
     );
   const candidate =
     [...match.markets.flatMap((m) => m.picks)]
-      .sort((a, b) => b.probability - a.probability)
+      .sort((a, b) => (b.probability ?? -1) - (a.probability ?? -1))
       .find((p) => p.market === "1x2") || match.markets[0]?.picks[0];
   const currentFocus = focus
     ? match.markets
@@ -259,7 +259,13 @@ export function MatchDetail({ id }: { id: string }) {
                         </span>
                       </div>
                       <div>
-                        <strong>{pct(1 - chosen.probability)}</strong>
+                        <strong>
+                          {pct(
+                            chosen.probability === null
+                              ? null
+                              : 1 - chosen.probability,
+                          )}
+                        </strong>
                         <span>Chance it loses</span>
                       </div>
                     </div>

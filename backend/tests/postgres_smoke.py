@@ -1,7 +1,10 @@
 """Run explicitly against a migrated, disposable PostgreSQL database, never production."""
 
-from app.db import SessionLocal, engine
-from app.models import Fixture, Job, Publication, Recommendation
+from concurrent.futures import ThreadPoolExecutor
+
+from app.chat import reserve_chat
+from app.db import SessionLocal, engine, now
+from app.models import Fixture, Job, Publication, QuoteObservation, Recommendation
 from app.worker import tick
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import DBAPIError
@@ -9,12 +12,16 @@ from sqlalchemy.exc import DBAPIError
 assert engine.dialect.name == "postgresql"
 with SessionLocal() as db:
     assert db.scalar(select(func.count()).select_from(Fixture)) == 1380
-    for cls, table in [(Publication, "publications"), (Recommendation, "recommendations")]:
+    for cls, table, column in [
+        (Publication, "publications", "created_at"),
+        (Recommendation, "recommendations", "created_at"),
+        (QuoteObservation, "quote_observations", "observed_at"),
+    ]:
         record = db.scalar(select(cls))
         assert record
         try:
             db.execute(
-                text(f"UPDATE {table} SET created_at = now() WHERE id = :id"), {"id": record.id}
+                text(f"UPDATE {table} SET {column} = now() WHERE id = :id"), {"id": record.id}
             )
             db.commit()
         except DBAPIError as error:
@@ -32,6 +39,16 @@ with SessionLocal() as db:
 tick()
 with SessionLocal() as db:
     assert db.scalar(select(func.count()).select_from(Job)) == count
+at = now()
+
+
+def concurrent_reservation(actor):
+    with SessionLocal() as db:
+        return reserve_chat(db, str(actor), at)
+
+
+with ThreadPoolExecutor(max_workers=6) as pool:
+    assert sum(pool.map(concurrent_reservation, range(6))) == 1
 print(
-    "PostgreSQL: migrations, persisted seed, immutable SQL trigger, advisory lock and duplicate-job checks passed"
+    "PostgreSQL: migrations, persisted seed, immutable SQL triggers, advisory lock, duplicate-job and concurrent chat quota checks passed"
 )

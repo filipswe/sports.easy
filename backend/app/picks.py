@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 from .config import settings
 from .db import now, utc
-from .leagues import BY_ID
+from .leagues import LEAGUES
 from .models import Competition, Recommendation, Settlement
 from .research import all_rows, recorded_price_usable
 
@@ -20,12 +20,13 @@ def eligible_rows(db, fresh_only=False):
         c.id
         for c in db.scalars(select(Competition))
         if c.mode == settings.app_data_mode
-        and c.provider_id.split(":")[1] in {str(i) for i in BY_ID}
+        and c.provider_id.split(":")[1] in {str(league.id) for league in LEAGUES}
     }
     return [
         r
         for r in current_quotes(db)
         if r["competition_id"] in competitions
+        and r["probability"] is not None
         and (not fresh_only or r["mode"] == "demo" or not r["stale"])
     ]
 
@@ -86,6 +87,20 @@ def recommendation_rows(db, upcoming=False):
             .where(Settlement.publication_id == rec.publication_id)
             .order_by(Settlement.recorded_at.desc())
         )
+        if upcoming:
+            current = next(
+                (
+                    r
+                    for r in window_rows
+                    if r["fixture_id"] == row["fixture_id"]
+                    and r["market"] == row["market"]
+                    and r["outcome"] == row["outcome"]
+                ),
+                None,
+            )
+            if current is None:
+                continue
+            row = {**row, "odds": current["odds"], "bookmaker": current["bookmaker"]}
         items.append(
             {
                 **row,

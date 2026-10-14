@@ -255,7 +255,7 @@ def test_all_market_explanations_are_specific_and_do_not_fake_support(client):
 
 def test_live_providers_request_every_top_five_league(db, monkeypatch):
     from app.config import settings
-    from app.leagues import LEAGUES
+    from app.leagues import ALL_COMPETITIONS, LEAGUES
     from app.providers import APIFootball, TheOddsAPI
 
     monkeypatch.setattr(settings, "api_football_key", "test-only")
@@ -270,7 +270,7 @@ def test_live_providers_request_every_top_five_league(db, monkeypatch):
     sports = []
     odds.client.get = lambda url, params, cost: sports.append(url.split("/")[-2]) or []
     assert odds.odds() == []
-    assert set(sports) == {league.sport for league in LEAGUES}
+    assert set(sports) == {league.sport for league in ALL_COMPETITIONS}
 
 
 def test_worker_refills_featured_vacancies_without_another_ingestion_job(db, monkeypatch):

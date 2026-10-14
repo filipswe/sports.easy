@@ -37,6 +37,8 @@ export type Selection = {
   corrected?: boolean;
 };
 export type Meta = {
+  operator_name?: string;
+  support_email?: string;
   mode: string;
   model_version: string;
   football_provider?: string;
@@ -101,7 +103,8 @@ export async function api<T>(
     );
   return json as T;
 }
-export const pct = (n: number) => (n * 100).toFixed(1) + "%";
+export const pct = (n: number | null) =>
+  n === null ? "Unavailable" : (n * 100).toFixed(1) + "%";
 export const marketName = (m: string) =>
   ({
     "1x2": "Match result",

@@ -197,6 +197,8 @@ def test_live_adapter_contract_reuses_quotes_for_new_prediction_versions(db, mon
     monkeypatch.setattr(settings, "live_retention_approved", True)
     monkeypatch.setattr(APIFootball, "fixtures", lambda self: records)
     monkeypatch.setattr(TheOddsAPI, "odds", lambda self: events)
+    monkeypatch.setattr(TheOddsAPI, "european_events", lambda self: [])
+    monkeypatch.setattr(settings, "odds_bookmaker_key", "demo-exchange")
     ingest(db)
     quote_count = db.scalar(select(func.count()).select_from(Quote).where(Quote.mode == "live"))
     assert quote_count == 120  # BTTS intentionally absent from live adapter coverage.
@@ -226,6 +228,6 @@ def test_live_adapter_contract_reuses_quotes_for_new_prediction_versions(db, mon
             .select_from(Publication)
             .where(Publication.prediction_id == revision.id)
         )
-        == 10
+        == 5  # Only current, usable quotes from the configured bookmaker are rebound.
     )
     assert db.scalar(select(Publication).where(Publication.prediction_id == old.id)) is not None

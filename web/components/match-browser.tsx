@@ -140,6 +140,7 @@ export function MatchBrowser() {
                 ["today", "Today"],
                 ["tomorrow", "Tomorrow"],
                 ["week", "Next 7 days"],
+                ["fortnight", "Next 14 days"],
               ].map(([v, l]) => (
                 <button
                   key={v}
@@ -248,7 +249,9 @@ export function MatchBrowser() {
                             />
                           ))
                         ) : (
-                          <span className="hint">Awaiting match data</span>
+                          <span className="hint">
+                            This market is unavailable
+                          </span>
                         )}
                       </div>
                       <Link

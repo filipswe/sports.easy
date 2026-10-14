@@ -10,11 +10,23 @@ from .ingestion import ingest
 from .models import AdminAudit, User
 
 parser = argparse.ArgumentParser(description="sports.easy operations")
-parser.add_argument("command", choices=["seed", "ingest", "evaluate", "promote-admin"])
+parser.add_argument("command", choices=["seed", "ingest", "evaluate", "promote-admin", "readiness"])
 parser.add_argument("--email")
 args = parser.parse_args()
 with SessionLocal() as db:
-    if args.command == "seed":
+    if args.command == "readiness":
+        from .readiness import release_blockers
+
+        print(
+            json.dumps(
+                {
+                    "configuration_blockers": release_blockers(),
+                    "note": "Also complete docs/production-readiness.md; configuration alone does not certify release.",
+                },
+                indent=2,
+            )
+        )
+    elif args.command == "seed":
         if settings.app_data_mode != "demo":
             raise SystemExit("Seed is only available in demo mode")
         print(json.dumps(ingest(db)))

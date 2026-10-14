@@ -160,6 +160,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <div className="footer-note">
           <b>18+ · Every pick has a chance of losing.</b>
           <p>Estimates, not guarantees. Prices can change.</p>
+          {meta?.operator_name && (
+            <p>
+              {meta.operator_name} · {meta.support_email}
+            </p>
+          )}
           <span>© {new Date().getFullYear()} sports.easy</span>
         </div>
       </footer>

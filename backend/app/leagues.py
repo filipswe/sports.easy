@@ -108,8 +108,14 @@ LEAGUES = (
         ),
     ),
 )
-BY_ID = {league.id: league for league in LEAGUES}
-BY_SPORT = {league.sport: league for league in LEAGUES}
+EUROPEAN_COMPETITIONS = (
+    League(2, "Champions League", "soccer_uefa_champs_league", ()),
+    League(3, "Europa League", "soccer_uefa_europa_league", ()),
+    League(848, "Conference League", "soccer_uefa_europa_conference_league", ()),
+)
+ALL_COMPETITIONS = LEAGUES + EUROPEAN_COMPETITIONS
+BY_ID = {league.id: league for league in ALL_COMPETITIONS}
+BY_SPORT = {league.sport: league for league in ALL_COMPETITIONS}
 CLUBS = {name: name.lower().replace(" ", "-") for league in LEAGUES for name, _ in league.clubs}
 
 

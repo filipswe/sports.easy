@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { api, Selection, pct } from "@/lib/api";
 import { useApp } from "./shell";
+import { AnalystChat } from "./analyst-chat";
 import { Empty, ErrorBox, PredictionCard, Skeletons, TeamBadge } from "./ui";
 export function Home() {
   const { meta } = useApp();
@@ -162,43 +163,7 @@ export function Home() {
           Model chances are estimates. No pick is guaranteed.
         </p>
       </section>
-      <section className="container builder-promo">
-        <div>
-          <div className="overline">
-            <Layers3 size={15} /> YOUR PICKS. TOGETHER.
-          </div>
-          <h2>
-            One match is a start.
-            <br />
-            Make it your parlay.
-          </h2>
-          <p>
-            Combine picks from different matches, see the combined odds, and see
-            the chance of them all winning.
-          </p>
-          <Link className="button primary" href="/parlays">
-            Open parlay builder <ArrowUpRight size={18} />
-          </Link>
-        </div>
-        <div className="parlay-example">
-          <div>
-            <span className="eyebrow">HOW ODDS COMBINE</span>
-            <span className="badge neutral">Example</span>
-          </div>
-          <div className="odds-equation">
-            <b>2.00</b>
-            <span>×</span>
-            <b>2.00</b>
-            <span>×</span>
-            <b>2.00</b>
-          </div>
-          <div className="example-total">
-            <span>Combined odds</span>
-            <strong>8.00</strong>
-          </div>
-          <p>All three picks must win. Their chances multiply, too.</p>
-        </div>
-      </section>
+      <AnalystChat />
       <section className="container section">
         <div className="section-heading">
           <div>

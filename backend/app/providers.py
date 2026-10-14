@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 
 from .config import settings
 from .db import now, utc
-from .leagues import BY_ID, BY_SPORT, LEAGUES
+from .leagues import BY_ID, BY_SPORT, EUROPEAN_COMPETITIONS, LEAGUES
 from .models import IngestionRun
 
 
@@ -297,7 +297,7 @@ class TheOddsAPI:
         if not settings.odds_api_key:
             raise ProviderUnavailable("ODDS_API_KEY is missing; live quotes unavailable")
         events = []
-        for league in LEAGUES:
+        for league in LEAGUES + EUROPEAN_COMPETITIONS:
             events.extend(
                 self.client.get(
                     f"https://api.the-odds-api.com/v4/sports/{league.sport}/odds",
@@ -308,10 +308,36 @@ class TheOddsAPI:
                         "markets": "h2h,totals",
                         "oddsFormat": "decimal",
                         "dateFormat": "iso",
+                        **(
+                            {
+                                "commenceTimeFrom": now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                "commenceTimeTo": (now() + timedelta(days=14)).strftime(
+                                    "%Y-%m-%dT%H:%M:%SZ"
+                                ),
+                            }
+                            if league in EUROPEAN_COMPETITIONS
+                            else {}
+                        ),
                     },
                     cost=2,
                 )
             )
+        return events
+
+    def european_events(self):
+        # /events is free of odds credits, with its own bounded request ledger.
+        if not settings.odds_api_key:
+            raise ProviderUnavailable("ODDS_API_KEY is missing; European fixtures unavailable")
+        client = ProviderClient(self.client.db, "the-odds-api-events", 12)
+        events = []
+        for league in EUROPEAN_COMPETITIONS:
+            data = client.get(
+                f"https://api.the-odds-api.com/v4/sports/{league.sport}/events",
+                {"apiKey": settings.odds_api_key, "dateFormat": "iso"},
+            )
+            if not isinstance(data, list):
+                raise ProviderUnavailable("Invalid European fixture response")
+            events.extend(data)
         return events
 
 

@@ -157,7 +157,7 @@ def test_monthly_and_minute_limits_stop_before_network(empty_db):
         ProviderClient(empty_db, "minute", 10, minute_budget=1).get("https://unused.invalid", {})
 
 
-def test_daily_recorded_prices_expire_without_becoming_fresh(monkeypatch):
+def test_three_day_recorded_prices_expire_without_becoming_fresh(monkeypatch):
     from app.research import recorded_price_usable
 
     anchor = now()
@@ -168,15 +168,15 @@ def test_daily_recorded_prices_expire_without_becoming_fresh(monkeypatch):
         "source_updated_at": anchor - timedelta(hours=2),
         "fetched_at": anchor - timedelta(hours=1),
     }
-    monkeypatch.setattr(settings, "poll_seconds", 86400)
+    monkeypatch.setattr(settings, "odds_poll_seconds", 259200)
     assert recorded_price_usable(row) and row["stale"]
-    row["fetched_at"] = anchor - timedelta(hours=25)
+    row["fetched_at"] = anchor - timedelta(hours=73)
     assert not recorded_price_usable(row)
     row["fetched_at"] = anchor - timedelta(hours=1)
     row["source_updated_at"] = None
     assert not recorded_price_usable(row)
     row["source_updated_at"] = anchor - timedelta(hours=2)
-    monkeypatch.setattr(settings, "poll_seconds", 14400)
+    monkeypatch.setattr(settings, "odds_poll_seconds", 14400)
     assert not recorded_price_usable(row)
 
 
@@ -248,6 +248,8 @@ def test_daily_shortlist_retains_original_prices_when_they_age(empty_db, monkeyp
     monkeypatch.setattr(settings, "live_retention_approved", True)
     monkeypatch.setattr(FootballData, "fixtures", lambda self: records)
     monkeypatch.setattr(TheOddsAPI, "odds", lambda self: events)
+    monkeypatch.setattr(TheOddsAPI, "european_events", lambda self: [])
+    monkeypatch.setattr(settings, "odds_bookmaker_key", "demo-exchange")
     ingest(empty_db)
     before = recommendation_rows(empty_db, upcoming=True)
     assert len(before) == 3

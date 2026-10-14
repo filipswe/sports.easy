@@ -15,6 +15,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from .auth import admin_required, user_required
 from .auth import router as auth_router
+from .chat import router as chat_router
 from .config import settings
 from .crests import team_logo
 from .db import get_db, now, utc
@@ -36,6 +37,7 @@ from .models import (
     Team,
 )
 from .picks import recommendation_rows
+from .readiness import release_blockers
 from .research import Filters, all_rows, quote_stale, require_fixture, search
 
 logger = logging.getLogger("sports.easy")
@@ -67,6 +69,8 @@ async def lifespan(app):
         raise RuntimeError("Production requires HTTPS and COOKIE_SECURE=true")
     if settings.app_env == "production" and not settings.smtp_host:
         raise RuntimeError("Production account workflows require SMTP delivery")
+    if settings.app_env == "production" and release_blockers():
+        raise RuntimeError("Production configuration incomplete: " + ", ".join(release_blockers()))
     yield
 
 
@@ -79,6 +83,7 @@ app = FastAPI(
 )
 app.include_router(auth_router)
 app.include_router(matchday_router)
+app.include_router(chat_router)
 requests_by_ip = defaultdict(deque)
 
 
@@ -202,13 +207,21 @@ def meta(db=Depends(get_db)):
         select(func.max(Fixture.fetched_at)).where(Fixture.mode == settings.app_data_mode)
     )
     competition_query = select(Competition).where(Competition.mode == settings.app_data_mode)
-    if settings.app_data_mode == "live":
-        competition_query = competition_query.where(
-            Competition.provider_id.startswith(settings.football_provider + ":")
-        )
+    from .matchday import current_quotes
+
+    priced_competitions = {r["competition_id"] for r in current_quotes(db)}
     # History stays stored, while the league picker shows each league's newest season once.
     current = {}
     for competition in sorted(db.scalars(competition_query), key=lambda c: -c.season):
+        if settings.app_data_mode == "live" and not competition.provider_id.startswith(
+            (settings.football_provider + ":", "the-odds-api:")
+        ):
+            continue
+        if (
+            competition.provider_id.startswith("the-odds-api:")
+            and competition.id not in priced_competitions
+        ):
+            continue
         current.setdefault(competition.provider_id.rsplit(":", 1)[0], competition)
     return {
         "mode": settings.app_data_mode,
@@ -216,9 +229,9 @@ def meta(db=Depends(get_db)):
         "football_provider": settings.football_provider
         if settings.app_data_mode == "live"
         else "demo",
-        "feed_notice": "Delayed results · Daily recorded odds"
-        if settings.app_data_mode == "live" and settings.poll_seconds >= 86400
-        else "",
+        "feed_notice": "Delayed results" if settings.app_data_mode == "live" else "",
+        "operator_name": settings.operator_name,
+        "support_email": settings.support_email,
         "data_fetched_at": latest,
         "leagues": [{"id": c.id, "name": c.name, "season": c.season} for c in current.values()],
         "bookmakers": [
@@ -278,6 +291,8 @@ def detail(fixture_id: str, db=Depends(get_db)):
         .where(Prediction.fixture_id == f.id)
         .order_by(Prediction.generated_at.desc())
     )
+    if p and (p.mode != f.mode or utc(p.fixture_kickoff) != utc(f.kickoff)):
+        p = None
     competition = db.get(Competition, f.competition_id)
     history_ids = [
         c.id

@@ -10,8 +10,17 @@ from sqlalchemy import select
 from .config import settings
 from .crests import team_logo
 from .db import get_db, now, utc
-from .leagues import BY_ID
-from .models import Competition, Fixture, Prediction, Team
+from .leagues import BY_ID, EUROPEAN_COMPETITIONS
+from .models import (
+    Bookmaker,
+    Competition,
+    Fixture,
+    IngestionRun,
+    Prediction,
+    Quote,
+    QuoteObservation,
+    Team,
+)
 from .picks import recommendation_rows
 from .reasons import pick_reason
 from .research import all_rows, recorded_price_usable, require_fixture
@@ -87,32 +96,145 @@ def markets(prediction):
 
 def current_quotes(db, fixture_id=None):
     seen, result = set(), []
+    published = {}
     for row in all_rows(db, fixture_id=fixture_id):
-        key = (row["fixture_id"], row["market"], row["outcome"], row["bookmaker_id"])
-        if key not in seen and row["region"] == settings.odds_region:
-            result.append(row)
-            seen.add(key)
-    # One consistent source across every match and parlay. Existing archives stay untouched.
-    names = sorted({r["bookmaker"] for r in result})
-    preferred = (
-        "Demo Sportsbook" if settings.app_data_mode == "demo" else settings.odds_bookmaker_key
+        published.setdefault(row["quote_id"], row)
+    observations = {}
+    for observation in db.scalars(
+        select(QuoteObservation).order_by(QuoteObservation.observed_at.desc())
+    ):
+        observations.setdefault(observation.quote_id, observation)
+    query = (
+        select(Quote, Fixture, Bookmaker, Competition)
+        .join(Fixture, Quote.fixture_id == Fixture.id)
+        .join(Bookmaker, Quote.bookmaker_id == Bookmaker.id)
+        .join(Competition, Fixture.competition_id == Competition.id)
+        .where(
+            Quote.mode == settings.app_data_mode,
+            Fixture.mode == settings.app_data_mode,
+            Fixture.status == "scheduled",
+            Fixture.kickoff > now(),
+            Bookmaker.region == settings.odds_region,
+        )
     )
-    book = next(
-        (n for n in names if n.casefold() == preferred.casefold()), names[0] if names else None
+    if fixture_id:
+        query = query.where(Fixture.id == fixture_id)
+    at = now()
+    latest_sweep = db.scalar(
+        select(IngestionRun.created_at)
+        .where(
+            IngestionRun.provider
+            == f"odds-refresh:{settings.odds_region}:{settings.odds_bookmaker_key}",
+            IngestionRun.status == "complete",
+        )
+        .order_by(IngestionRun.created_at.desc())
     )
-    return [r for r in result if r["bookmaker"] == book]
+    records = list(db.execute(query))
+    records.sort(
+        key=lambda record: (
+            utc(
+                observations[record[0].id].observed_at
+                if record[0].id in observations
+                else record[0].fetched_at
+            ),
+            utc(record[0].fetched_at),
+            record[0].id,
+        ),
+        reverse=True,
+    )
+    for q, f, book, comp in records:
+        expected = (
+            "demo:" + settings.odds_region + ":demo"
+            if settings.app_data_mode == "demo"
+            else f"live:{settings.odds_region}:{settings.odds_bookmaker_key}"
+        )
+        if settings.app_data_mode == "demo":
+            if book.name != "Demo Sportsbook":
+                continue
+        elif book.provider_id != expected:
+            continue
+        key = (q.fixture_id, q.market, q.outcome)
+        if key in seen:
+            continue
+        seen.add(key)
+        observation = observations.get(q.id)
+        observed_at = observation.observed_at if observation else q.fetched_at
+        if settings.app_data_mode == "live":
+            verified_kickoff = (
+                observation.fixture_kickoff
+                if observation
+                else published.get(q.id, {}).get("kickoff")
+            )
+            if verified_kickoff is None or utc(verified_kickoff) != utc(f.kickoff):
+                continue
+        if (
+            settings.app_data_mode == "live"
+            and latest_sweep
+            and utc(observed_at) < utc(latest_sweep)
+        ):
+            continue
+        age = (at - utc(observed_at)).total_seconds()
+        if settings.app_data_mode == "live" and (
+            q.source_updated_at is None or not 0 <= age <= min(settings.odds_poll_seconds, 259200)
+        ):
+            continue
+        if comp.provider_id.split(":")[1] in {str(c.id) for c in EUROPEAN_COMPETITIONS} and utc(
+            f.kickoff
+        ) > at + timedelta(days=14):
+            continue
+        home, away = db.get(Team, f.home_id), db.get(Team, f.away_id)
+        row = published.get(
+            q.id,
+            {
+                "id": None,
+                "quote_id": q.id,
+                "fixture_id": f.id,
+                "home": home.name,
+                "away": away.name,
+                "home_logo": logo(home),
+                "away_logo": logo(away),
+                "competition_id": comp.id,
+                "competition": comp.name,
+                "kickoff": utc(f.kickoff),
+                "market": q.market,
+                "outcome": q.outcome,
+                "probability": None,
+                "odds": float(q.price),
+                "bookmaker": book.name,
+                "bookmaker_id": book.id,
+                "region": book.region,
+                "mode": f.mode,
+                "stale": True,
+                "fetched_at": utc(q.fetched_at),
+                "source_updated_at": q.source_updated_at,
+            },
+        )
+        result.append({**row, "observed_at": utc(observed_at)})
+    return result
 
 
 def match_row(db, f, quotes, include_markets=True):
     prediction = db.scalar(
         select(Prediction)
-        .where(Prediction.fixture_id == f.id)
+        .where(Prediction.fixture_id == f.id, Prediction.mode == f.mode)
         .order_by(Prediction.generated_at.desc())
     )
     if prediction and utc(prediction.fixture_kickoff) != utc(f.kickoff):
         prediction = None
     home, away = db.get(Team, f.home_id), db.get(Team, f.away_id)
     catalog = markets(prediction) if include_markets else []
+    if include_markets and prediction is None:
+        for key, name in [("1x2", "Match result · 1X2"), ("totals", "Total goals · 2.5")]:
+            outcomes = {
+                q["outcome"]: None for q in quotes if q["fixture_id"] == f.id and q["market"] == key
+            }
+            outcomes = {
+                outcome: outcomes[outcome]
+                for outcome in ("home", "draw", "away", "over", "under")
+                if outcome in outcomes
+            }
+            if outcomes:
+                catalog.append({"key": key, "name": name, "group": "Popular", "outcomes": outcomes})
     for market in catalog:
         market["picks"] = []
         alternatives = market.pop("outcomes")
@@ -140,7 +262,15 @@ def match_row(db, f, quotes, include_markets=True):
                         home.name,
                         away.name,
                         alternatives,
-                    ),
+                    )
+                    if prediction
+                    else {
+                        "summary": "Real bookmaker price is available. This competition does not yet have enough verified history for a model estimate.",
+                        "heading": "Bookmaker price",
+                        "model_favors": False,
+                        "signals": [],
+                        "caution": "No model confidence estimate is available for this match.",
+                    },
                     "odds": best["odds"] if best else None,
                     "bookmaker": best["bookmaker"] if best else None,
                     "stale": best["stale"] if best else False,
@@ -175,7 +305,7 @@ def match_row(db, f, quotes, include_markets=True):
 @router.get("/matchday")
 def matchday(
     team: str = Query("", max_length=80),
-    period: str = Query("week", pattern="^(today|tomorrow|week)$"),
+    period: str = Query("week", pattern="^(today|tomorrow|week|fortnight)$"),
     league: str = "",
     db=Depends(get_db),
 ):
@@ -184,8 +314,8 @@ def matchday(
     start = day + timedelta(days=1) if period == "tomorrow" else at
     end = (
         day + timedelta(days=2 if period == "tomorrow" else 1)
-        if period != "week"
-        else at + timedelta(days=7)
+        if period not in {"week", "fortnight"}
+        else at + timedelta(days=14 if period == "fortnight" else 7)
     )
     allowed = [
         c.id
@@ -207,7 +337,12 @@ def matchday(
     if league:
         query = query.where(Fixture.competition_id == league)
     quotes = current_quotes(db)
-    items = [match_row(db, f, quotes) for f in db.scalars(query)]
+    priced = {q["fixture_id"] for q in quotes}
+    items = [
+        match_row(db, f, quotes)
+        for f in db.scalars(query)
+        if settings.app_data_mode == "demo" or f.id in priced
+    ]
     return {
         "items": [r for r in items if team.casefold() in (r["home"] + " " + r["away"]).casefold()],
         "mode": settings.app_data_mode,
@@ -241,7 +376,11 @@ class ParlayInput(BaseModel):
 
 
 def parlay_summary(legs):
-    probability = math.prod(x["probability"] for x in legs)
+    probability = (
+        math.prod(x["probability"] for x in legs)
+        if all(x["probability"] is not None for x in legs)
+        else None
+    )
     common = set(p["bookmaker"] for p in legs[0]["prices"])
     for leg in legs[1:]:
         common &= {p["bookmaker"] for p in leg["prices"]}
@@ -267,7 +406,12 @@ def parlay_summary(legs):
     return {
         "legs": legs,
         "probability": probability,
-        "failure_probability": 1 - probability,
+        "failure_probability": 1 - probability if probability is not None else None,
+        "confidence": "Estimate unavailable"
+        if probability is None
+        else "More likely to win than lose"
+        if probability > 0.5
+        else "Estimated chance of all picks winning",
         "combined_odds": combined,
         "prices": prices,
         "odds_basis": "Your entered prices"
@@ -334,7 +478,9 @@ def suggestions(
 ):
     if min_odds > max_odds:
         raise HTTPException(422, "Minimum odds must be below maximum odds.")
-    rows = [r for r in current_quotes(db) if recorded_price_usable(r)]
+    rows = [
+        r for r in current_quotes(db) if r["probability"] is not None and recorded_price_usable(r)
+    ]
     # Search up to 18 earliest fixtures and all priced outcomes per bookmaker/fixture.
     fixture_ids = list(
         dict.fromkeys(r["fixture_id"] for r in sorted(rows, key=lambda r: r["kickoff"]))

@@ -10,7 +10,7 @@ from .config import settings
 from .db import SessionLocal, engine, now
 from .ingestion import ingest
 from .model import VERSION
-from .models import AuthSession, AuthToken, Job
+from .models import AuthSession, AuthToken, Job, UsageCounter
 from .picks import publish_recommendations
 from .providers import ProviderUnavailable
 
@@ -25,6 +25,7 @@ def tick():
             with SessionLocal() as db:
                 db.execute(delete(AuthToken).where(AuthToken.expires_at < now()))
                 db.execute(delete(AuthSession).where(AuthSession.expires_at < now()))
+                db.execute(delete(UsageCounter).where(UsageCounter.expires_at < now()))
                 db.commit()
                 slot = int(now().timestamp()) // max(60, settings.poll_seconds)
                 job = Job(

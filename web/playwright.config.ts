@@ -24,6 +24,7 @@ export default defineConfig({
           "sqlite:///" + join(tmpdir(), `sports-easy-e2e-${process.pid}.db`),
         PUBLIC_ORIGIN: "http://127.0.0.1:3100",
         APP_DATA_MODE: "demo",
+        GROQ_API_KEY: "",
       },
     },
     {

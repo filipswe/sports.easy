@@ -15,7 +15,7 @@ export type Pick = {
   fixture_id: string;
   market: string;
   outcome: string;
-  probability: number;
+  probability: number | null;
   analysis?: PickAnalysis;
   odds: number | null;
   bookmaker: string | null;
@@ -50,8 +50,9 @@ export type MatchRow = {
 };
 export type Parlay = {
   legs: Pick[];
-  probability: number;
-  failure_probability: number;
+  probability: number | null;
+  failure_probability: number | null;
+  confidence: string;
   combined_odds: number | null;
   odds_basis: string;
   prices: Price[];

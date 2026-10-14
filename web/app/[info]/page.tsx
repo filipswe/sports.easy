@@ -81,7 +81,7 @@ const pages: Record<
       },
       {
         title: "Deletion",
-        body: "Account settings allow deletion after password confirmation. This removes the user, preferences, sessions, reset tokens and saved selections. Anonymous published prediction and settlement records remain for research integrity. Backup expiry and provider retention must be configured by the deployment operator.",
+        body: "Analyst questions and selected stored match facts are sent to Groq when the optional AI service is enabled. Chat text is not stored by this application; provider processing follows its own policy. Shared quota counters expire after two days and are removed by the worker or a subsequent successful chat request. Account settings allow deletion after password confirmation. This removes the user, preferences, sessions, reset tokens and saved selections. Anonymous published prediction and settlement records remain for research integrity. Backup expiry and provider retention must be configured by the deployment operator.",
       },
     ],
   },

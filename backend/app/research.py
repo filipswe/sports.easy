@@ -73,9 +73,11 @@ def recorded_price_usable(row):
     if row["mode"] == "demo" or not row["stale"]:
         return True
     return (
-        settings.poll_seconds >= 86400
+        settings.odds_poll_seconds >= 86400
         and row["source_updated_at"] is not None
-        and 0 <= (now() - utc(row["fetched_at"])).total_seconds() <= 86400
+        and 0
+        <= (now() - utc(row.get("observed_at", row["fetched_at"]))).total_seconds()
+        <= min(settings.odds_poll_seconds, 259200)
     )
 
 
