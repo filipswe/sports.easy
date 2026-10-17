@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta
 from pathlib import Path
 
@@ -12,10 +13,14 @@ from sqlalchemy import select
 
 
 def test_reviewed_crests_are_safe_local_pngs_and_cover_unicode_names():
-    public = Path(__file__).resolve().parents[2] / "web" / "public"
+    web = Path(__file__).resolve().parents[2] / "web"
+    public = web / "public"
+    client_catalog = json.loads((web / "lib" / "clubs.json").read_text())
     for name, record in CLUB_CRESTS.items():
         assert safe_crest(record["source"]) == record["source"]
-        assert record["asset"] == f"/clubs/api-team-{record['provider_id']}.png"
+        prefix = "football-data-team" if record.get("provider") == "football-data" else "api-team"
+        assert record["asset"] == f"/clubs/{prefix}-{record['provider_id']}.png"
+        assert client_catalog[name] == record["asset"]
         data = (public / record["asset"].lstrip("/")).read_bytes()
         assert data.startswith(b"\x89PNG\r\n\x1a\n") and len(data) < 512_000
         team = Team(name=name, provider_id="the-odds-api:" + name)

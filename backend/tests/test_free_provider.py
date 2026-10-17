@@ -140,7 +140,9 @@ def test_free_identity_and_first_observed_history_are_separate(empty_db, monkeyp
     live = next(f for f in fixtures if f.mode == "live")
     assert live.provider_id.startswith("football-data:")
     assert utc(live.result_available_at) == fetched
-    assert team_logo(empty_db.get(Team, live.home_id)) == record["home"]["crest"]
+    team = empty_db.get(Team, live.home_id)
+    assert team.crest_url == record["home"]["crest"]
+    assert team_logo(team) == "/clubs/football-data-team-57.png"
 
 
 def test_monthly_and_minute_limits_stop_before_network(empty_db):
