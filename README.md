@@ -25,6 +25,12 @@ This is a personal portfolio project. The [portfolio roadmap and learning guide]
 
 Use the [resume-readiness checklist](docs/resume-readiness.md) to prepare a reproducible demonstration and accurate project description. It includes the latest verified official-pick results and separates required demo fixes from optional expansion.
 
+## Portfolio demonstration
+
+See the [screenshots and short walkthrough](docs/demo/README.md), [architecture diagram](docs/architecture.md) and [validation record](docs/resume-ready-verification.md). The recording uses real cached data in an isolated local preview; permanent Vercel deployments may run an older revision. Hosted data refresh is manual for this personal project. Provider-key rotation remains an owner action before presenting the hosted demo as finished.
+
+For a fresh clone, the Docker Compose quick start below is the default setup with clearly labelled sample data and no provider accounts. Never overwrite an existing private `.env` while following fresh-clone instructions.
+
 ## Isolated milestone preview
 
 From this checkout, run `.venv/bin/python scripts/preview.py` and open **http://127.0.0.1:3101**. Add `--live --ai` to use the ignored provider/Groq credentials with a separate cached database under ignored `.preview/`. The preview starts a production UI and isolated worker for updates/settlements; add `--dev` for hot reload. Live restarts reuse recent data; sample previews use a new temporary database. Keep the terminal running while browsing; Ctrl+C stops the preview. Your existing Docker services and data remain untouched. See [production candidate, configuration and launch requirements](docs/production-readiness.md) for exact limitations and remaining launch work. [Milestone validation results](docs/milestone-verification.md) record the checks and independent review.
@@ -118,8 +124,8 @@ Demo prices age normally and become stale after ten minutes. Stale prices are br
 From the repository root:
 
 ```sh
-.venv/bin/ruff check backend
-.venv/bin/ruff format --check backend
+.venv/bin/ruff check backend scripts
+.venv/bin/ruff format --check backend scripts
 .venv/bin/pytest -q
 npm run lint --prefix web
 npm run typecheck --prefix web

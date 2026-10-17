@@ -1,6 +1,6 @@
 # Vercel Hobby beta setup
 
-This is the approved **free, non-commercial beta** hosting plan. The application has not been published. The new Neon database was initialized at the user's explicit request. The existing Docker installation and `127.0.0.1:3101` preview are separate.
+This is the approved **free, non-commercial beta** hosting plan. The website is published at https://sports-easy-y6m1.vercel.app and the API at https://sports-easy.vercel.app. The backend root may return JSON 404; use `/api/docs` or `/api/health`. New feature-branch previews are separate from these permanent deployments. The Neon database was initialized at the user's explicit request. The existing Docker installation and `127.0.0.1:3101` preview are separate.
 
 ## Accounts to create
 
@@ -12,11 +12,11 @@ This is the approved **free, non-commercial beta** hosting plan. The application
 
 ## Private configuration
 
-Use ignored `.env.beta`, based on `.env.beta.example`. It is separate from the running local `.env`. The prepared local file contains a newly generated session secret, privately copied provider keys, the new Neon application connection and configured operator/email settings. The canonical website origin remains unconfigured. No credentials are committed.
+Use ignored `.env.beta`, based on `.env.beta.example`. It is separate from the running local `.env`. The prepared local file contains a newly generated session secret, privately copied provider keys, the new Neon application connection and configured operator/email settings. The configured canonical website origin is `https://sports-easy-y6m1.vercel.app`. No credentials are committed.
 
 The newly created Neon database has been initialized through `007_observations`. A restricted `sports_easy_beta_app` role is configured privately as `DATABASE_URL`; it can use application tables but cannot create schema objects or update the migration revision. Owner credentials are retained only as local `MIGRATION_DATABASE_URL`. Do not copy the migration credential to Vercel or the refresh runner. Future migrations use that owner credential privately; application hosts use the restricted role.
 
-The chosen public support address is `sportseasycontact@gmail.com`. Gmail sender settings and the app password are saved privately. SMTP authentication passed with certificate-verified STARTTLS on 14 October 2026. This checks account access only; actual verification/reset delivery still requires a separate test. No email has been sent.
+The chosen public support address is `sportseasycontact@gmail.com`. Gmail sender settings and the app password are saved privately. A controlled hosted test on 17 October 2026 confirmed actual verification and password-reset delivery, canonical links, single-use verification, login and reset session revocation. The temporary test account was removed; no tokens are published.
 
 Run from the repository root:
 
@@ -28,7 +28,7 @@ This reports blocker names without connecting or showing secret values. Before a
 
 Review football-data.org, The Odds API, Groq processing/privacy and crest publication rights for this actual public project. Set `LIVE_RETENTION_APPROVED=true` only after that review; the private preview's prior approval is not copied automatically.
 
-## Projects to configure after deployment approval
+## Project configuration
 
 Create two projects from this repository's approved release commit. Keep stable production URLs; automatically generated preview URLs need isolated data/configuration and are not the beta's canonical account origin.
 
@@ -44,6 +44,16 @@ The website deliberately fails a Vercel build when the backend origin is missing
 Initial migrations were applied once to the verified empty Neon database. Future migrations use the separate owner credential before starting the API. Do not put migrations or ingestion in the Vercel build command, and do not restore/replace the running local databases.
 
 ## Background refresh
+
+For this personal demonstration, use the manual process from the repository root:
+
+```sh
+.venv/bin/python scripts/run_beta.py readiness
+.venv/bin/python scripts/run_beta.py refresh
+```
+
+It loads only project `.env.beta`, omits `MIGRATION_DATABASE_URL`, validates configuration and stops after 20 minutes. A dedicated AUTOCOMMIT PostgreSQL connection keeps its advisory lock without an idle transaction. Run this before a demonstration and after results become available; no automatic cloud freshness is promised. Keep the optional schedule below disabled unless deliberately switching to it. See the README for the bounded `refresh-prices` recovery command.
+
 
 `.github/workflows/beta-refresh.yml` is disabled unless the repository variable `ENABLE_BETA_REFRESH=true` is explicitly set. It uses the GitHub environment `beta`, a concurrency group and a 20-minute execution cap. The workflow has an hourly schedule at minute 17 and a manual trigger; schedules only work after the workflow is on the repository's default branch. No merge is performed by this preparation.
 
@@ -63,7 +73,7 @@ This hourly beta schedule does not match the local worker's 30-second checks. Gi
 - Verify the permanent frontend origin, HTTPS, secure session cookies and rejection of wrong-origin mutations.
 - Test registration, email verification, login, reset, account deletion and saved picks with the chosen sender. No local verification links may appear in public responses.
 - Verify provider keys are absent from browser assets/responses, real prices and model/source labels, all team images, chat fallback, mobile navigation and the existing European settlement limitations.
-- Run one explicit refresh, check quotas/identity mapping, then enable the schedule. Check trusted peer/IP behavior and shared request limits on the real hosting path.
+- Run one explicit refresh, check quotas/identity mapping, then retain the manual process or deliberately verify and enable the optional schedule. Check trusted peer/IP behavior and shared request limits on the real hosting path.
 - Configure monitoring that respects free allowances, backup handling and privacy/contact text. Do not claim validated predictive accuracy.
 
 Sources checked 14 October 2026: [Vercel fair use](https://vercel.com/docs/limits/fair-use-guidelines), [FastAPI support](https://vercel.com/docs/frameworks/backend/fastapi), [Fluid limits](https://vercel.com/docs/functions/limitations), [daily Hobby cron](https://vercel.com/docs/cron-jobs/usage-and-pricing), [Neon Free limits](https://neon.com/docs/introduction/plans), [GitHub schedules](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule), [Google app passwords](https://support.google.com/mail/answer/185833), [Gmail sender limits](https://support.google.com/mail/answer/22839).

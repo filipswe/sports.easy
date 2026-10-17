@@ -1,6 +1,6 @@
 # Resume readiness checklist
 
-Assessed on 17 October 2026. This is a personal portfolio project. You can already list it as a project in development, provided you understand the implementation and describe your own work accurately. A polished demonstration and a reliable refresh path are the main remaining steps before presenting it as a finished live project.
+Assessed on 17 October 2026. This is a personal portfolio project. You can already list it as a project in development, provided you understand the implementation and describe your own work accurately. The reproducible demonstration and refresh fixes are now prepared on `feat/resume-ready-demo`. Provider-key rotation remains an owner action; the learning walkthrough is intentionally deferred.
 
 ## Already demonstrated in the repository
 
@@ -15,15 +15,15 @@ Assessed on 17 October 2026. This is a personal portfolio project. You can alrea
 
 ## Complete before calling the live demonstration finished
 
-- [ ] **Fix the odds observation timestamp issue.** A slow ingestion run can reject newly fetched prices against the job's earlier start time. Add a slow-job regression and verify that fresh observations produce visible matches. See [the investigation and evidence](team-logo-verification.md).
-- [ ] **Demonstrate repeatable result refresh.** Confirm a later completed match moves from pending to won/lost/void without rewriting the original pick. The manual hosted update below proves settlement once; it does not prove the scheduler runs automatically.
-- [ ] **Choose one refresh process.** Configure and verify the scheduled workflow if the demo promises current data. Coordinate local/hosted quota usage and test timeout recovery. A documented manual refresh is acceptable for a clearly labelled personal demonstration.
-- [ ] **Align the demonstration with the code.** Deliberately promote a reviewed commit or record a reproducible local demonstration. Record its SHA. A Git push can create a Vercel preview; it does not establish that the permanent website runs that commit.
-- [ ] **Run CI on that exact commit.** Local checks and historical green checks are useful evidence; new unpushed commits do not have GitHub check results yet.
-- [ ] **Smoke-test the complete core path.** Home → chronological matches → market/goal line → analysis → parlay → save/reopen → Performance. Include mobile, an empty result set and a failed network request. Verify actual image loading and that missing odds are never fabricated.
-- [ ] **Verify account email if showing accounts.** Test a controlled registration, verification and password reset through the chosen deployment. SMTP authentication alone does not prove delivery. Keep delivery tokens private.
-- [ ] **Rotate previously shared credentials.** Replace secrets shared in chat, keep local settings ignored, and confirm no secret appears in Git history, screenshots or the browser bundle. Update hosting secrets privately after rotation.
-- [ ] **Package the project.** Add current screenshots, a short demo video/GIF, one clear setup path, an architecture diagram and a concise limitations section. A reviewer should be able to understand and run it without this conversation.
+- [x] **Fix the odds observation timestamp issue.** Prices now use actual request receipt time. Delayed-ingestion and failure regressions pass; the real-data preview displays priced matches. The PostgreSQL lock also runs outside idle transactions. See [validation evidence](resume-ready-verification.md).
+- [x] **Demonstrate repeatable result refresh.** The hosted results update below retained original publications. Settlement/repeated-run/correction regressions and PostgreSQL duplicate-job checks pass. This verifies manual operation and repeatable behavior, not an automatic cloud scheduler.
+- [x] **Choose one refresh process.** Use the bounded manual `scripts/run_beta.py refresh` process, with existing cadence, lock and budget guards. The optional cloud schedule stays disabled. Run before a presentation; automatic freshness is not promised.
+- [x] **Align the demonstration with the code.** [Screenshots and walkthrough](demo/README.md) record the isolated real-data preview from `a7e796a`. Automatic feature previews are allowed; permanent production deployments were not promoted.
+- [x] **Run CI on that exact commit.** GitHub checks on code revision `a7e796a` passed backend tests/PostgreSQL/audit, web lint/types/build/browser tests and secret scanning. The final documentation commit has its own check run linked from the draft PR.
+- [x] **Smoke-test the complete core path.** Recorded real-data flow passed with 85 priced matches, 170 loaded logos, goal lines, analysis, parlay save/reload, Performance, chat and mobile. Nine browser regressions also cover empty searches, network retry and initials fallback.
+- [x] **Verify account email if showing accounts.** Controlled hosted verification/reset delivery, single-use verification, login and reset session revocation passed. The temporary account was removed; tokens remain private.
+- [ ] **Owner: finish provider-key rotation.** Database-owner rotation is complete; private files remain ignored, full-history secret scanning and browser-bundle checks passed. The user confirmed the four provider replacements have not been saved yet. Replace them privately in `.env`, `.env.beta` and backend hosting settings. Never paste replacements into chat.
+- [x] **Package the project.** Added six screenshots, a short playable WebM, the Docker sample-data setup, a Mermaid architecture diagram and explicit limitations. See the [demo package](demo/README.md).
 - [ ] **Be able to explain it yourself.** Trace one request through the UI/API/database; explain a schema relationship and migration, probability versus odds, parlay multiplication and its independence assumption, provider failures, authentication, and one meaningful test. Explain a bug you diagnosed and the tradeoff behind its fix. See the [learning guide](portfolio-guide.md).
 
 ## Optional expansion
