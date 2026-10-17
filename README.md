@@ -19,6 +19,10 @@ New installations start with labelled sample data. The [free live setup](docs/li
 
 See [product details and coverage](docs/product-update.md) for current market, data and storage limits.
 
+Club logos are cached for all 171 teams inventoried in the live beta on 14 October 2026, with seven additional reviewed clubs added on 17 October; every one of the 180 team records in the current local live cache resolves to a reviewed crest. Every shared badge tries the reviewed local image, then its supplied provider image, then the club's initials. Newly added teams can use provider images immediately; see the [crest catalog and source notes](web/public/clubs/README.md) before adding more cached assets.
+
+This is a personal portfolio project. The [portfolio roadmap and learning guide](docs/portfolio-guide.md) distinguishes remaining work from optional expansion and walks through the actual technologies and request flow.
+
 ## Isolated milestone preview
 
 From this checkout, run `.venv/bin/python scripts/preview.py` and open **http://127.0.0.1:3101**. Add `--live --ai` to use the ignored provider/Groq credentials with a separate cached database under ignored `.preview/`. The preview starts a production UI and isolated worker for updates/settlements; add `--dev` for hot reload. Live restarts reuse recent data; sample previews use a new temporary database. Keep the terminal running while browsing; Ctrl+C stops the preview. Your existing Docker services and data remain untouched. See [production candidate, configuration and launch requirements](docs/production-readiness.md) for exact limitations and remaining launch work. [Milestone validation results](docs/milestone-verification.md) record the checks and independent review.
