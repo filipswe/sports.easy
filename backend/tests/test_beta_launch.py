@@ -75,6 +75,45 @@ def test_beta_configuration_checks_never_connect_and_report_only_field_names():
     assert "test-only" not in str(errors)
 
 
+def test_private_runner_excludes_owner_credentials_and_rejects_invalid_config(monkeypatch):
+    monkeypatch.syspath_prepend(str(ROOT / "scripts"))
+    import run_beta
+
+    values = {**beta_values(), "MIGRATION_DATABASE_URL": "owner-only-do-not-propagate"}
+    inherited = {"MIGRATION_DATABASE_URL": "inherited-owner", "DATABASE_URL": "wrong-database"}
+    env = run_beta.environment(values, inherited)
+    assert env["DATABASE_URL"] == values["DATABASE_URL"]
+    assert "MIGRATION_DATABASE_URL" not in env
+    assert inherited["MIGRATION_DATABASE_URL"] == "inherited-owner"
+    with pytest.raises(ValueError, match="SMTP authentication"):
+        run_beta.environment({**values, "SMTP_PASSWORD": ""}, inherited)
+
+
+def test_private_runner_bounds_command_and_never_invokes_migrations(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    monkeypatch.syspath_prepend(str(ROOT / "scripts"))
+    import run_beta
+
+    (tmp_path / ".env.beta").write_text("test settings provided by fixture")
+    monkeypatch.setattr(run_beta, "ROOT", tmp_path)
+    monkeypatch.setattr(run_beta, "dotenv_values", lambda *a, **kw: beta_values())
+    monkeypatch.setattr(sys, "argv", ["run_beta.py", "refresh-prices"])
+    calls = []
+    monkeypatch.setattr(
+        run_beta.subprocess,
+        "run",
+        lambda *a, **kw: calls.append((a, kw)) or SimpleNamespace(returncode=0),
+    )
+    with pytest.raises(SystemExit) as result:
+        run_beta.main()
+    assert result.value.code == 0
+    assert calls[0][0][0] == [sys.executable, "-m", "app.cli", "refresh-prices"]
+    assert calls[0][1]["timeout"] == 1200
+    assert calls[0][1]["cwd"] == tmp_path / "backend"
+    assert "MIGRATION_DATABASE_URL" not in calls[0][1]["env"]
+
+
 @pytest.mark.parametrize(
     "field,value,expected",
     [

@@ -305,3 +305,19 @@ def test_slow_live_ingestion_observes_prices_at_receipt_not_job_start(empty_db, 
     )
     assert utc(sweep.created_at) == clock[0]
     assert matchday(team="", period="week", market="all", db=empty_db)["items"]
+
+
+def test_failed_price_recovery_does_not_record_a_successful_sweep(empty_db, monkeypatch):
+    from app.ingestion import refresh_odds
+
+    monkeypatch.setattr(settings, "app_data_mode", "live")
+    monkeypatch.setattr(settings, "live_retention_approved", True)
+
+    def unavailable(self):
+        raise ProviderUnavailable("Provider timeout")
+
+    monkeypatch.setattr(TheOddsAPI, "odds", unavailable)
+    with pytest.raises(ProviderUnavailable, match="timeout"):
+        refresh_odds(empty_db)
+    assert empty_db.scalar(select(IngestionRun)) is None
+    assert empty_db.scalar(select(QuoteObservation)) is None

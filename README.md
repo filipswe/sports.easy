@@ -158,6 +158,15 @@ Checks database-level immutability, persisted seed, advisory lock exclusivity an
 
 The admin command requires an existing verified account and records an audit event. `/admin` exposes sanitized ingestion state; no credentials are shown. Ingestion/evaluation commands are private operator actions, not public HTTP routes. Do not run manual ingestion concurrently with the worker.
 
+For the personal cloud demonstration, use one manual operator process from the repository root:
+
+```sh
+.venv/bin/python scripts/run_beta.py readiness
+.venv/bin/python scripts/run_beta.py refresh
+```
+
+This loads ignored `.env.beta`, excludes the database-owner credential, validates settings, uses the existing lock/cadence/quota safeguards, and stops after 20 minutes. It never migrates the database. The optional GitHub schedule stays disabled for this manual setup. If an earlier long ingestion discarded prices, run `.venv/bin/python scripts/run_beta.py refresh-prices` once: it retrieves a bounded real-price sweep at its receipt time without refitting history. This explicit recovery normally costs 16 odds credits; it still honors configured budgets and does not fabricate or backdate quotes. Do not repeat it on every page visit.
+
 ## Live credentials and limitations
 
 Follow the [live signup and activation steps](docs/live-setup.md) to connect actual bookmaker prices.
