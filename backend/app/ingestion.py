@@ -201,6 +201,26 @@ def odds_refresh_due(db, at=None):
     )
 
 
+def refresh_odds(db):
+    """Explicit operator refresh; caller holds the provider lock and commits the result."""
+    if settings.app_data_mode != "live" or not settings.live_retention_approved:
+        raise ProviderUnavailable("Real price refresh requires approved live mode")
+    events = TheOddsAPI(db).odds()
+    # Model fitting and provider calls can outlast the initial fixture fetch.
+    # Observe prices when received, retaining their upstream timestamps.
+    received = now()
+    rejected = store_odds(db, events, fetched=received, observed=True)
+    db.add(
+        IngestionRun(
+            provider=f"odds-refresh:{settings.odds_region}:{settings.odds_bookmaker_key}",
+            status="complete",
+            created_at=received,
+            detail={"events": len(events)},
+        )
+    )
+    return {"events": len(events), "unmatched_events": rejected}
+
+
 def ingest(db):
     mode, fetched = settings.app_data_mode, now()
     ensure_model(db)
@@ -321,19 +341,11 @@ def ingest(db):
     db.commit()
     settle(db)
     db.commit()
-    refresh = mode == "live" and odds_refresh_due(db, fetched)
+    refresh = mode == "live" and odds_refresh_due(db)
     if refresh:
-        events = TheOddsAPI(db).odds()
-    rejected = store_odds(db, events, fetched=fetched, observed=True)
-    if refresh:
-        db.add(
-            IngestionRun(
-                provider=f"odds-refresh:{settings.odds_region}:{settings.odds_bookmaker_key}",
-                status="complete",
-                created_at=fetched,
-                detail={"events": len(events)},
-            )
-        )
+        rejected = refresh_odds(db)["unmatched_events"]
+    else:
+        rejected = store_odds(db, events, fetched=fetched, observed=True)
     # Reuse available recorded quotes with today's new prediction without altering quote ages.
     from .matchday import current_quotes
 

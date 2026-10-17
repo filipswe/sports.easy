@@ -6,13 +6,22 @@ from sqlalchemy import select
 from .config import settings
 from .db import SessionLocal
 from .evaluation import evaluate
-from .ingestion import ingest
+from .ingestion import ingest, refresh_odds, settle
 from .models import AdminAudit, User
 from .providers import ProviderUnavailable
 
 parser = argparse.ArgumentParser(description="sports.easy operations")
 parser.add_argument(
-    "command", choices=["seed", "ingest", "evaluate", "promote-admin", "readiness", "refresh"]
+    "command",
+    choices=[
+        "seed",
+        "ingest",
+        "evaluate",
+        "promote-admin",
+        "readiness",
+        "refresh",
+        "refresh-prices",
+    ],
 )
 parser.add_argument("--email")
 args = parser.parse_args()
@@ -29,7 +38,7 @@ with SessionLocal() as db:
                 indent=2,
             )
         )
-    elif args.command == "refresh":
+    elif args.command in {"refresh", "refresh-prices"}:
         from .readiness import release_blockers
         from .worker import tick
 
@@ -38,7 +47,20 @@ with SessionLocal() as db:
                 "Production configuration incomplete: " + ", ".join(release_blockers())
             )
         try:
-            result = tick()
+            if args.command == "refresh":
+                result = tick()
+            else:
+                from .picks import publish_recommendations
+                from .price_refresh import provider_lock
+
+                with provider_lock(db) as acquired:
+                    if acquired:
+                        result = {"status": "complete", **refresh_odds(db)}
+                        settle(db)
+                        publish_recommendations(db)
+                        db.commit()
+                    else:
+                        result = {"status": "busy"}
         except Exception:
             raise SystemExit("Refresh failed; inspect sanitized application logs") from None
         print(json.dumps(result))

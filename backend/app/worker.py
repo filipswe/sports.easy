@@ -36,6 +36,8 @@ def tick():
         # Dedicated connection holds a session-level lock through all ingestion commits.
         with engine.connect() as lock:
             postgres = engine.dialect.name == "postgresql"
+            if postgres:
+                lock = lock.execution_options(isolation_level="AUTOCOMMIT")
             if postgres and not lock.scalar(text("SELECT pg_try_advisory_lock(719482)")):
                 return {"status": "busy"}
             try:

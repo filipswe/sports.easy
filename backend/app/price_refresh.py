@@ -28,7 +28,9 @@ DETAIL_MARKETS = "alternate_totals,btts,double_chance,totals_h1,alternate_totals
 @contextmanager
 def provider_lock(db):
     if db.bind.dialect.name == "postgresql":
-        with db.bind.connect() as connection:
+        # Session advisory locks do not need an open transaction. Managed Postgres
+        # can terminate idle transactions while another connection processes data.
+        with db.bind.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
             acquired = connection.scalar(text("SELECT pg_try_advisory_lock(719482)"))
             try:
                 yield acquired

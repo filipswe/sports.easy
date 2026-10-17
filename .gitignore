@@ -9,6 +9,7 @@ __pycache__/
 *.pyc
 *.db
 *.db-*
+*.db.provider.lock
 node_modules/
 .next/
 test-results/

@@ -19,6 +19,18 @@ New installations start with labelled sample data. The [free live setup](docs/li
 
 See [product details and coverage](docs/product-update.md) for current market, data and storage limits.
 
+Club logos are cached for all 171 teams inventoried in the live beta on 14 October 2026, with seven additional reviewed clubs added on 17 October; every one of the 180 team records in the current local live cache resolves to a reviewed crest. Every shared badge tries the reviewed local image, then its supplied provider image, then the club's initials. Newly added teams can use provider images immediately; see the [crest catalog and source notes](web/public/clubs/README.md) before adding more cached assets.
+
+This is a personal portfolio project. The [portfolio roadmap and learning guide](docs/portfolio-guide.md) distinguishes remaining work from optional expansion and walks through the actual technologies and request flow.
+
+Use the [resume-readiness checklist](docs/resume-readiness.md) to prepare a reproducible demonstration and accurate project description. It includes the latest verified official-pick results and separates required demo fixes from optional expansion.
+
+## Portfolio demonstration
+
+See the [screenshots and short walkthrough](docs/demo/README.md), [architecture diagram](docs/architecture.md) and [validation record](docs/resume-ready-verification.md). The recording uses real cached data in an isolated local preview; permanent Vercel deployments may run an older revision. Hosted data refresh is manual for this personal project. Provider-key rotation remains an owner action before presenting the hosted demo as finished.
+
+For a fresh clone, the Docker Compose quick start below is the default setup with clearly labelled sample data and no provider accounts. Never overwrite an existing private `.env` while following fresh-clone instructions.
+
 ## Isolated milestone preview
 
 From this checkout, run `.venv/bin/python scripts/preview.py` and open **http://127.0.0.1:3101**. Add `--live --ai` to use the ignored provider/Groq credentials with a separate cached database under ignored `.preview/`. The preview starts a production UI and isolated worker for updates/settlements; add `--dev` for hot reload. Live restarts reuse recent data; sample previews use a new temporary database. Keep the terminal running while browsing; Ctrl+C stops the preview. Your existing Docker services and data remain untouched. See [production candidate, configuration and launch requirements](docs/production-readiness.md) for exact limitations and remaining launch work. [Milestone validation results](docs/milestone-verification.md) record the checks and independent review.
@@ -112,8 +124,8 @@ Demo prices age normally and become stale after ten minutes. Stale prices are br
 From the repository root:
 
 ```sh
-.venv/bin/ruff check backend
-.venv/bin/ruff format --check backend
+.venv/bin/ruff check backend scripts
+.venv/bin/ruff format --check backend scripts
 .venv/bin/pytest -q
 npm run lint --prefix web
 npm run typecheck --prefix web
@@ -151,6 +163,15 @@ Checks database-level immutability, persisted seed, advisory lock exclusivity an
 ```
 
 The admin command requires an existing verified account and records an audit event. `/admin` exposes sanitized ingestion state; no credentials are shown. Ingestion/evaluation commands are private operator actions, not public HTTP routes. Do not run manual ingestion concurrently with the worker.
+
+For the personal cloud demonstration, use one manual operator process from the repository root:
+
+```sh
+.venv/bin/python scripts/run_beta.py readiness
+.venv/bin/python scripts/run_beta.py refresh
+```
+
+This loads ignored `.env.beta`, excludes the database-owner credential, validates settings, uses the existing lock/cadence/quota safeguards, and stops after 20 minutes. It never migrates the database. The optional GitHub schedule stays disabled for this manual setup. If an earlier long ingestion discarded prices, run `.venv/bin/python scripts/run_beta.py refresh-prices` once: it retrieves a bounded real-price sweep at its receipt time without refitting history. This explicit recovery normally costs 16 odds credits; it still honors configured budgets and does not fabricate or backdate quotes. Do not repeat it on every page visit.
 
 ## Live credentials and limitations
 
