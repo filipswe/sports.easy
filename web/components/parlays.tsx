@@ -200,6 +200,7 @@ export function Parlays() {
                         <div>
                           <small>Model chance · all win</small>
                           <b>{pct(p.probability)}</b>
+                          <small>{p.confidence}</small>
                         </div>
                         <button
                           className="button primary"

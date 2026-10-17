@@ -15,9 +15,10 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from .auth import admin_required, user_required
 from .auth import router as auth_router
+from .chat import router as chat_router
 from .config import settings
 from .crests import team_logo
-from .db import get_db, now, utc
+from .db import SessionLocal, get_db, now, utc
 from .evaluation import metrics
 from .matchday import router as matchday_router
 from .model import VERSION, no_vig
@@ -36,6 +37,8 @@ from .models import (
     Team,
 )
 from .picks import recommendation_rows
+from .price_refresh import router as price_router
+from .readiness import release_blockers
 from .research import Filters, all_rows, quote_stale, require_fixture, search
 
 logger = logging.getLogger("sports.easy")
@@ -67,6 +70,8 @@ async def lifespan(app):
         raise RuntimeError("Production requires HTTPS and COOKIE_SECURE=true")
     if settings.app_env == "production" and not settings.smtp_host:
         raise RuntimeError("Production account workflows require SMTP delivery")
+    if settings.app_env == "production" and release_blockers():
+        raise RuntimeError("Production configuration incomplete: " + ", ".join(release_blockers()))
     yield
 
 
@@ -79,6 +84,8 @@ app = FastAPI(
 )
 app.include_router(auth_router)
 app.include_router(matchday_router)
+app.include_router(chat_router)
+app.include_router(price_router)
 requests_by_ip = defaultdict(deque)
 
 
@@ -106,23 +113,37 @@ async def controls(request: Request, call_next):
     category = (
         "auth-mutation" if "/auth/" in request.url.path and request.method != "GET" else "research"
     )
-    key = (ip, category)
-    queue = requests_by_ip[key]
-    stamp = time.monotonic()
-    while queue and queue[0] < stamp - 60:
-        queue.popleft()
     limit = 20 if category == "auth-mutation" else 180
-    if len(queue) >= limit:
+    if settings.app_env == "production":
+        from .rate_limits import reserve_request
+
+        try:
+            with SessionLocal() as db:
+                allowed = reserve_request(db, ip, category, now(), limit)
+        except Exception:
+            logger.error(json.dumps({"event": "rate_limit_unavailable"}))
+            return JSONResponse(
+                {"error": {"message": "Service temporarily unavailable"}}, status_code=503
+            )
+    else:
+        key = (ip, category)
+        queue = requests_by_ip[key]
+        stamp = time.monotonic()
+        while queue and queue[0] < stamp - 60:
+            queue.popleft()
+        allowed = len(queue) < limit
+        if allowed:
+            queue.append(stamp)
+        if len(requests_by_ip) > 10000:
+            for old_key in list(requests_by_ip):
+                if not requests_by_ip[old_key] or requests_by_ip[old_key][-1] < stamp - 60:
+                    del requests_by_ip[old_key]
+    if not allowed:
         return JSONResponse(
             {"error": {"message": "Too many requests. Try again in a minute."}},
             status_code=429,
             headers={"Retry-After": "60"},
         )
-    queue.append(stamp)
-    if len(requests_by_ip) > 10000:
-        for old_key in list(requests_by_ip):
-            if not requests_by_ip[old_key] or requests_by_ip[old_key][-1] < stamp - 60:
-                del requests_by_ip[old_key]
     try:
         response = await call_next(request)
     except Exception:
@@ -202,13 +223,21 @@ def meta(db=Depends(get_db)):
         select(func.max(Fixture.fetched_at)).where(Fixture.mode == settings.app_data_mode)
     )
     competition_query = select(Competition).where(Competition.mode == settings.app_data_mode)
-    if settings.app_data_mode == "live":
-        competition_query = competition_query.where(
-            Competition.provider_id.startswith(settings.football_provider + ":")
-        )
+    from .matchday import current_quotes
+
+    priced_competitions = {r["competition_id"] for r in current_quotes(db)}
     # History stays stored, while the league picker shows each league's newest season once.
     current = {}
     for competition in sorted(db.scalars(competition_query), key=lambda c: -c.season):
+        if settings.app_data_mode == "live" and not competition.provider_id.startswith(
+            (settings.football_provider + ":", "the-odds-api:")
+        ):
+            continue
+        if (
+            competition.provider_id.startswith("the-odds-api:")
+            and competition.id not in priced_competitions
+        ):
+            continue
         current.setdefault(competition.provider_id.rsplit(":", 1)[0], competition)
     return {
         "mode": settings.app_data_mode,
@@ -216,9 +245,9 @@ def meta(db=Depends(get_db)):
         "football_provider": settings.football_provider
         if settings.app_data_mode == "live"
         else "demo",
-        "feed_notice": "Delayed results · Daily recorded odds"
-        if settings.app_data_mode == "live" and settings.poll_seconds >= 86400
-        else "",
+        "feed_notice": "Delayed results" if settings.app_data_mode == "live" else "",
+        "operator_name": settings.operator_name,
+        "support_email": settings.support_email,
         "data_fetched_at": latest,
         "leagues": [{"id": c.id, "name": c.name, "season": c.season} for c in current.values()],
         "bookmakers": [
@@ -229,7 +258,7 @@ def meta(db=Depends(get_db)):
         ],
         "markets": ["1x2", "totals", "btts"]
         if settings.app_data_mode == "demo"
-        else ["1x2", "totals"],
+        else ["1x2", "totals", "btts", "double_chance", "half_totals"],
         "region": settings.odds_region,
         "freshness_seconds": settings.quote_max_age_seconds,
         "regional_notice": settings.regional_notice,
@@ -278,6 +307,8 @@ def detail(fixture_id: str, db=Depends(get_db)):
         .where(Prediction.fixture_id == f.id)
         .order_by(Prediction.generated_at.desc())
     )
+    if p and (p.mode != f.mode or utc(p.fixture_kickoff) != utc(f.kickoff)):
+        p = None
     competition = db.get(Competition, f.competition_id)
     history_ids = [
         c.id
@@ -406,7 +437,9 @@ def detail(fixture_id: str, db=Depends(get_db)):
         )["items"],
         "explanation": {
             "kind": "Deterministic statistical explanation",
-            "text": f"The model fits opponent-adjusted attack and defence strengths to past goals, with home advantage and 180-day recency weighting. The inputs contain {p.factors['league_sample']} historical matches. Injuries, xG and lineups are not used. Independent Poisson scores can miss low-score dependence and team changes."
+            "text": "These estimates come from the sportsbook's complete match-result prices, with its margin removed. They are market-based, rather than an independent fit to match history."
+            if p and p.factors.get("basis") == "market"
+            else f"The model fits opponent-adjusted attack and defence strengths to past goals, with home advantage and 180-day recency weighting. The inputs contain {p.factors['league_sample']} historical matches. Injuries, xG and lineups are not used. Independent Poisson scores can miss low-score dependence and team changes."
             if p
             else "Insufficient historical coverage: the model abstains.",
             "sources": [p.id] if p else [],

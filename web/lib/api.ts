@@ -17,6 +17,7 @@ export type Selection = {
   bookmaker_id: string;
   region: string;
   probability: number;
+  probability_basis?: string;
   likelihood: string;
   failure_probability: number;
   estimated_ev: number;
@@ -37,6 +38,8 @@ export type Selection = {
   corrected?: boolean;
 };
 export type Meta = {
+  operator_name?: string;
+  support_email?: string;
   mode: string;
   model_version: string;
   football_provider?: string;
@@ -69,6 +72,24 @@ export class ApiError extends Error {
     super(message);
   }
 }
+let csrfRequest: Promise<string> | null = null;
+function csrfToken() {
+  if (!csrfRequest) {
+    csrfRequest = fetch("/api/auth/csrf", { credentials: "same-origin" })
+      .then(async (response) => {
+        if (!response.ok)
+          throw new ApiError(
+            "Unable to verify this request. Try again.",
+            response.status,
+          );
+        return (await response.json()).csrf as string;
+      })
+      .finally(() => {
+        csrfRequest = null;
+      });
+  }
+  return csrfRequest;
+}
 export async function api<T>(
   path: string,
   options: RequestInit = {},
@@ -76,16 +97,7 @@ export async function api<T>(
   const headers = new Headers(options.headers);
   if (options.body) headers.set("Content-Type", "application/json");
   if (options.method && !["GET", "HEAD"].includes(options.method)) {
-    const tokenResponse = await fetch("/api/auth/csrf", {
-      credentials: "same-origin",
-    });
-    if (!tokenResponse.ok)
-      throw new ApiError(
-        "Unable to verify this request. Try again.",
-        tokenResponse.status,
-      );
-    const token = await tokenResponse.json();
-    headers.set("x-csrf-token", token.csrf);
+    headers.set("x-csrf-token", await csrfToken());
   }
   const res = await fetch("/api" + path, {
     ...options,
@@ -101,7 +113,8 @@ export async function api<T>(
     );
   return json as T;
 }
-export const pct = (n: number) => (n * 100).toFixed(1) + "%";
+export const pct = (n: number | null) =>
+  n === null ? "—" : (n * 100).toFixed(1) + "%";
 export const marketName = (m: string) =>
   ({
     "1x2": "Match result",

@@ -2,17 +2,20 @@
 
 ## Services
 
-```text
-Browser → Next.js (same-origin /api proxy) → FastAPI → PostgreSQL
-                                                    ↑
-                                         scheduled Python worker
-                                           ↙                ↘
-                                    Football adapter      Odds adapter
+```mermaid
+flowchart LR
+  Browser --> Web[Next.js / React]
+  Web -->|same-origin /api proxy| API[FastAPI]
+  API --> DB[(PostgreSQL / local SQLite)]
+  Refresh[Python refresh command / local worker] --> Feeds[Football and odds providers]
+  Refresh --> DB
+  API -->|optional grounded analysis| Groq
+  API -->|verification and reset| SMTP
 ```
 
-Next.js 16 / React / TypeScript renders the responsive application. Tailwind's PostCSS integration and an original CSS component system supply the light theme. The sample clubs use local crests; additional live club IDs use the API-Sports media host allowed by the image CSP. No remote fonts are used. Webpack is used for builds and development because this workstation restricts Turbopack's CSS subprocess socket. Python 3.13, FastAPI, SQLAlchemy 2 and Alembic form one backend. PostgreSQL is the deployment database; SQLite is a genuine persistent local convenience, **not** a multi-worker substitute.
+Next.js 16 / React / TypeScript renders the responsive application. Tailwind's PostCSS integration and an original CSS component system supply the light theme. Reviewed local crests cover the current 180-team cache; shared badges try a supplied provider image and then initials when needed. No remote fonts are used. Webpack is used for builds and development because this workstation restricts Turbopack's CSS subprocess socket. Python 3.13, FastAPI, SQLAlchemy 2 and Alembic form one backend. PostgreSQL is the deployment database; SQLite is a genuine persistent local convenience, **not** a multi-worker substitute.
 
-The four-hour worker is a separate long-running process. A dedicated PostgreSQL connection holds an advisory lock across ingestion commits. Jobs have unique mode/model-version/time-bucket keys, state and sanitized failure details. Quota attempts are persisted before requests. Expired auth tokens and sessions are removed on worker ticks. There is no Redis, LLM service or independent inference microservice.
+The personal hosted demonstration uses a manual one-shot refresh command; the optional GitHub schedule stays disabled. Local previews run a separate long-running worker. Both share the four-hour fixture/results and three-day odds cadence. A dedicated PostgreSQL connection in AUTOCOMMIT mode holds a session advisory lock across ingestion commits without leaving an idle transaction open. Jobs have unique mode/model-version/time-bucket keys, state and sanitized failure details. Quota attempts are persisted before requests. Expired auth tokens and sessions are removed on worker ticks. There is no Redis or independent inference microservice; Groq is an optional external chat provider, separate from the Python probability model.
 
 ## Reviewable milestones
 
@@ -24,11 +27,11 @@ See README for exact start commands used by every milestone.
 
 ## Persistence choices
 
-Competitions include a season value and explicit provider league identity; the top five domestic leagues are supported. Team and fixture IDs are canonical UUIDs with unique prefixed provider IDs. Reviewed cross-provider aliases have a unique provider/type/external-ID constraint. Fixtures hold mutable provider status, regulation goals and half-time goals. Quote snapshots store decimal precision, bookmaker, fixed market code, source timestamp and fetch timestamp. Markets and outcomes are bounded enums in code, avoiding unnecessary catalog tables for the supported market catalog. Dedicated richer team-statistics tables are deferred; currently the only model inputs are fixture results.
+Competitions include a season value and explicit provider league identity; the top five domestic leagues and three European competitions are supported, with European upcoming coverage bounded to 14 days. Team and fixture IDs are canonical UUIDs with unique prefixed provider IDs. Reviewed cross-provider aliases have a unique provider/type/external-ID constraint. Fixtures hold mutable provider status, regulation goals and half-time goals. Quote snapshots store decimal precision, bookmaker, fixed market code, source timestamp and fetch timestamp. Markets and outcomes are bounded enums in code, avoiding unnecessary catalog tables for the supported market catalog. Dedicated richer team-statistics tables are deferred; currently the only model inputs are fixture results.
 
 Predictions retain model version, generation time, cutoff, history fetch time, predicted kickoff, input hash, probabilities and structured model factors. Publications point to exact predictions and quotes. Saved picks and official recommendations point to publications. Recommendations are unique per fixture and immutable. Browser parlay selections/saves are stored locally and are analyzed by the server. SQLAlchemy guards immutable version changes; the PostgreSQL migration additionally blocks UPDATE/DELETE through database triggers. Settlement corrections create revisions linked to their predecessor. The fixture source state is mutable, but an old probability or price is never rewritten. A price snapshot is an observation, not evidence that a bet could be executed.
 
-Evaluation runs persist structured reports. Explanations are deterministic renderings of persisted model factors and prediction IDs, so a separate LLM cache table is not needed. The explicitly synthetic demo populates results and half-time scores. Live ingestion never substitutes demo results. Injuries, xG and standings are not populated. Model artifacts are recomputed by a worker; model version/factors and cutoff provide a compact audit trail. Full source-history correction versions are a remaining limitation for exact long-term replay after provider corrections.
+Evaluation runs persist structured reports. Baseline explanations render persisted model factors and prediction IDs. Optional chat selects grounded evidence through Groq and falls back to a clearly labelled data-backed answer; chat text is not retained on the server. The explicitly synthetic demo populates results and half-time scores. Live ingestion never substitutes demo results. Injuries, xG and standings are not populated. Model artifacts are recomputed by a worker; model version/factors and cutoff provide a compact audit trail. Full source-history correction versions are a remaining limitation for exact long-term replay after provider corrections.
 
 ## Security controls and limits
 
@@ -36,7 +39,7 @@ Evaluation runs persist structured reports. Explanations are deterministic rende
 - Random reset/verification tokens are SHA-256 hashed at rest, 30-minute, single-use, row-locked on PostgreSQL. SMTP delivery is optional locally; only demo mode may return the test email link. No default administrator; explicit local CLI promotion writes an audit event.
 - Cookie mutations require exact configured Origin plus a synchronizer CSRF token in the signed session. All saved-record reads/deletes are owner-scoped. Account deletion requires password confirmation.
 - ORM queries, bounded filters/page sizes, finite numbers, 32 KiB request body limit, controlled ordering, fixed provider hosts, request timeouts, sanitized errors, React text rendering, restricted same-origin proxy and security headers.
-- Auth mutations: 20/minute per observed client IP; other API calls: 180/minute. This in-process limiter is suitable for **one API process**. Behind the Next proxy it may see a shared proxy IP. Production requires a trusted edge limiter and correct client-IP handling before scaling; the app never trusts arbitrary forwarding headers.
+- Auth mutations: 20/minute per observed client IP; other API calls: 180/minute. Production uses shared atomic database counters in fixed calendar-minute windows, with short-lived keyed IP digests and no raw IP storage. Development retains the in-process rolling window. Behind the Next proxy, visitors may share a proxy budget until hosted client-IP behavior is validated; the app never trusts arbitrary forwarding headers. Correct trusted-edge identity remains necessary before scaling.
 - No permissive CORS, arbitrary URL fetch, HTML rendering of provider text, client secrets, payment operations or AI content execution.
 - CSP currently permits inline scripts/styles required by this Next setup; a per-request nonce policy is future hardening. Production HTTPS/HSTS and reverse-proxy body limits must be set at the edge. Error hooks are structured JSON logs, not an integrated paid monitoring service.
 
@@ -50,6 +53,7 @@ Interactive specification: `/api/docs`; machine-readable OpenAPI: `/api/openapi.
 - GET `/api/fixtures/{id}`, `/api/fixtures/{id}/odds-history`
 - GET `/api/matchday`, `/api/matchday/{id}`, `/api/recommendations`
 - POST `/api/parlays/analyze`; GET `/api/parlays/suggestions`
+- POST `/api/chat`, `/api/prices/refresh` (bounded market-detail lookup)
 - GET `/api/performance?page=1` (official-pick archive and latest evaluation)
 - GET `/api/auth/csrf`, `/api/auth/me`; POST register/login/logout/verify/request-reset/reset
 - PUT `/api/auth/preferences`; DELETE `/api/auth/account`
@@ -57,8 +61,8 @@ Interactive specification: `/api/docs`; machine-readable OpenAPI: `/api/openapi.
 - GET `/api/admin/status` (administrator only)
 - GET `/api/health`, `/api/ready`
 
-Failures use `{ "error": { "message": "…", "fields": [...] } }`. GET searches are side-effect-free and never call providers. Filters serialize to URL parameters. `start` and `end` must both be timezone-aware, end-exclusive, ≤31 days apart. Matchday today/tomorrow filters currently use UTC day boundaries; kickoff display uses the browser timezone. Display time uses the account timezone if supplied. Matchday and parlay prices use decimal odds.
+Failures use `{ "error": { "message": "…", "fields": [...] } }`. GET searches are side-effect-free and never call providers. Filters serialize to URL parameters. `start` and `end` must both be timezone-aware, end-exclusive, ≤31 days apart. Matchday today/tomorrow filters use Europe/Belgrade calendar boundaries; kickoff display uses the browser timezone. Display time uses the account timezone if supplied. Matchday and parlay prices use decimal odds.
 
-Search currently joins persisted publications then filters/ranks in Python, with bounded output pagination. This is intentionally readable for the current five-league fixture set; replace with SQL window functions for latest snapshots and SQL filtering, and benchmark before enlarging coverage or long-term archives. Performance reporting uses each official recommendation’s frozen original publication, including both wins and losses.
+Search currently joins persisted publications then filters/ranks in Python, with bounded output pagination. This is intentionally readable for the current eight-competition fixture set; replace with SQL window functions for latest snapshots and SQL filtering, and benchmark before enlarging coverage or long-term archives. Performance reporting uses each official recommendation’s frozen original publication, including both wins and losses.
 
-Prediction training, recent form and evaluation are isolated by league. The five-league catalog also drives live provider requests and demo club identities. Reasons are derived on the server from saved model factors and supplied for each market outcome. Featured recommendations use a nearest 24-hour window and kickoff ordering, while immutable historical recommendation records remain available to Performance.
+Prediction training, recent form and evaluation are isolated by league. The five-league catalog also drives live provider requests and demo club identities. Reasons are derived on the server from saved model factors and supplied for each market outcome. Featured recommendations use the earliest upcoming Europe/Belgrade calendar matchday and kickoff ordering, while immutable historical recommendation records remain available to Performance.

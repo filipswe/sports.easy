@@ -11,15 +11,33 @@ import {
 } from "lucide-react";
 import { api, Selection, pct } from "@/lib/api";
 import { useApp } from "./shell";
+import { AnalystChat } from "./analyst-chat";
 import { Empty, ErrorBox, PredictionCard, Skeletons, TeamBadge } from "./ui";
 export function Home() {
   const { meta } = useApp();
   const [items, setItems] = useState<Selection[] | null>(null),
     [error, setError] = useState("");
   useEffect(() => {
-    api<{ items: Selection[] }>("/recommendations")
-      .then((r) => setItems(r.items))
-      .catch((e) => setError(e.message));
+    let active = true;
+    const load = () =>
+      api<{ items: Selection[] }>("/recommendations")
+        .then((r) => {
+          if (active) {
+            setItems(r.items);
+            setError("");
+          }
+        })
+        .catch((e) => {
+          if (active) setError(e.message);
+        });
+    load();
+    const interval = window.setInterval(() => {
+      if (!document.hidden) load();
+    }, 60000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
   }, []);
   const top = items?.[0];
   return (
@@ -73,7 +91,7 @@ export function Home() {
           </div>
           <div className="hero-match">
             <span className="badge green-badge">
-              <Sparkles size={12} /> Model spotlight
+              <Sparkles size={12} /> Matchday spotlight
             </span>
             {top ? (
               <>
@@ -92,7 +110,9 @@ export function Home() {
                   <span>First kickoff in our shortlist</span>
                   <strong>
                     {pct(top.probability)}
-                    <small>model chance</small>
+                    <small>
+                      {top.probability_basis?.toLowerCase() || "model chance"}
+                    </small>
                   </strong>
                 </div>
               </>
@@ -128,8 +148,8 @@ export function Home() {
             </div>
             <h2>Our recommended picks</h2>
             <p>
-              Top model picks for the next 24-hour matchday window, in kickoff
-              order.
+              Our picks for the soonest matchday, in kickoff order. European
+              nights and the top five leagues, as they happen.
             </p>
           </div>
           <Link className="text-link" href="/performance">
@@ -162,43 +182,7 @@ export function Home() {
           Model chances are estimates. No pick is guaranteed.
         </p>
       </section>
-      <section className="container builder-promo">
-        <div>
-          <div className="overline">
-            <Layers3 size={15} /> YOUR PICKS. TOGETHER.
-          </div>
-          <h2>
-            One match is a start.
-            <br />
-            Make it your parlay.
-          </h2>
-          <p>
-            Combine picks from different matches, see the combined odds, and see
-            the chance of them all winning.
-          </p>
-          <Link className="button primary" href="/parlays">
-            Open parlay builder <ArrowUpRight size={18} />
-          </Link>
-        </div>
-        <div className="parlay-example">
-          <div>
-            <span className="eyebrow">HOW ODDS COMBINE</span>
-            <span className="badge neutral">Example</span>
-          </div>
-          <div className="odds-equation">
-            <b>2.00</b>
-            <span>×</span>
-            <b>2.00</b>
-            <span>×</span>
-            <b>2.00</b>
-          </div>
-          <div className="example-total">
-            <span>Combined odds</span>
-            <strong>8.00</strong>
-          </div>
-          <p>All three picks must win. Their chances multiply, too.</p>
-        </div>
-      </section>
+      <AnalystChat />
       <section className="container section">
         <div className="section-heading">
           <div>

@@ -10,8 +10,18 @@ from sqlalchemy import select
 from .config import settings
 from .crests import team_logo
 from .db import get_db, now, utc
-from .leagues import BY_ID
-from .models import Competition, Fixture, Prediction, Team
+from .leagues import BY_ID, EUROPEAN_COMPETITIONS
+from .model import market_probabilities
+from .models import (
+    Bookmaker,
+    Competition,
+    Fixture,
+    IngestionRun,
+    Prediction,
+    Quote,
+    QuoteObservation,
+    Team,
+)
 from .picks import recommendation_rows
 from .reasons import pick_reason
 from .research import all_rows, recorded_price_usable, require_fixture
@@ -31,9 +41,21 @@ def under(rate, line):
     return sum(poisson(rate, n) for n in range(math.floor(line) + 1))
 
 
+def matches_market(key, requested):
+    if requested == "all":
+        return True
+    if requested == "totals_all":
+        return key == "totals" or key.startswith("totals_")
+    if requested == "half_totals_all":
+        return key.startswith("half_totals_")
+    return key == requested
+
+
 def markets(prediction):
     if not prediction:
         return []
+    if prediction.factors.get("basis") == "market":
+        return []  # Only observed markets can be assessed from this baseline.
     p, factors = prediction.probabilities, prediction.factors
     h, a = factors["home_rate"], factors["away_rate"]
     result = []
@@ -43,11 +65,11 @@ def markets(prediction):
 
     add("1x2", "Match result · 1X2", "Popular", p["1x2"])
     add("btts", "Both teams to score", "Popular", p["btts"])
-    for line in [0.5, 1.5, 2.5, 3.5, 4.5]:
+    for line in [n + 0.5 for n in range(10)]:
         u = under(h + a, line)
         add(
             "totals" if line == 2.5 else f"totals_{line}",
-            f"Total goals · {line}",
+            f"Under/over goals · {line}",
             "Goals",
             {"over": 1 - u, "under": u},
         )
@@ -85,34 +107,250 @@ def markets(prediction):
     return result
 
 
-def current_quotes(db, fixture_id=None):
+def current_quotes(db, fixture_id=None, markets_filter=None):
     seen, result = set(), []
-    for row in all_rows(db, fixture_id=fixture_id):
-        key = (row["fixture_id"], row["market"], row["outcome"], row["bookmaker_id"])
-        if key not in seen and row["region"] == settings.odds_region:
-            result.append(row)
-            seen.add(key)
-    # One consistent source across every match and parlay. Existing archives stay untouched.
-    names = sorted({r["bookmaker"] for r in result})
-    preferred = (
-        "Demo Sportsbook" if settings.app_data_mode == "demo" else settings.odds_bookmaker_key
+    query = (
+        select(Quote, Fixture, Bookmaker, Competition)
+        .join(Fixture, Quote.fixture_id == Fixture.id)
+        .join(Bookmaker, Quote.bookmaker_id == Bookmaker.id)
+        .join(Competition, Fixture.competition_id == Competition.id)
+        .where(
+            Quote.mode == settings.app_data_mode,
+            Fixture.mode == settings.app_data_mode,
+            Fixture.status == "scheduled",
+            Fixture.kickoff > now(),
+            Bookmaker.region == settings.odds_region,
+        )
     )
-    book = next(
-        (n for n in names if n.casefold() == preferred.casefold()), names[0] if names else None
+    if fixture_id:
+        query = query.where(Fixture.id == fixture_id)
+    if markets_filter is not None:
+        query = query.where(Quote.market.in_(markets_filter))
+    if settings.app_data_mode == "demo":
+        query = query.where(Bookmaker.name == "Demo Sportsbook")
+    else:
+        query = query.where(
+            Bookmaker.provider_id == f"live:{settings.odds_region}:{settings.odds_bookmaker_key}"
+        )
+    records = list(db.execute(query))
+    if not records:
+        return []
+    ids = [q.id for q, _, _, _ in records]
+    observations = {}
+    for observation in db.scalars(
+        select(QuoteObservation)
+        .where(QuoteObservation.quote_id.in_(ids))
+        .order_by(QuoteObservation.observed_at.desc())
+    ):
+        observations.setdefault(observation.quote_id, observation)
+    published = {row["quote_id"]: row for row in all_rows(db, quote_ids=ids, unique_quotes=True)}
+    team_ids = {
+        team_id for _, fixture, _, _ in records for team_id in (fixture.home_id, fixture.away_id)
+    }
+    teams = {team.id: team for team in db.scalars(select(Team).where(Team.id.in_(team_ids)))}
+    at = now()
+    latest_sweep = db.scalar(
+        select(IngestionRun.created_at)
+        .where(
+            IngestionRun.provider
+            == f"odds-refresh:{settings.odds_region}:{settings.odds_bookmaker_key}",
+            IngestionRun.status == "complete",
+        )
+        .order_by(IngestionRun.created_at.desc())
     )
-    return [r for r in result if r["bookmaker"] == book]
+    detail_sweeps = {}
+    for run in db.scalars(
+        select(IngestionRun)
+        .where(IngestionRun.provider == "odds-detail-refresh", IngestionRun.status == "complete")
+        .order_by(IngestionRun.created_at.desc())
+    ):
+        if (
+            run.detail.get("bookmaker") == settings.odds_bookmaker_key
+            and run.detail.get("region") == settings.odds_region
+        ):
+            detail_sweeps.setdefault(run.detail.get("fixture_id"), utc(run.created_at))
+    records.sort(
+        key=lambda record: (
+            utc(
+                observations[record[0].id].observed_at
+                if record[0].id in observations
+                else record[0].fetched_at
+            ),
+            utc(record[0].fetched_at),
+            record[0].id,
+        ),
+        reverse=True,
+    )
+    for q, f, book, comp in records:
+        expected = (
+            "demo:" + settings.odds_region + ":demo"
+            if settings.app_data_mode == "demo"
+            else f"live:{settings.odds_region}:{settings.odds_bookmaker_key}"
+        )
+        if settings.app_data_mode == "demo":
+            if book.name != "Demo Sportsbook":
+                continue
+        elif book.provider_id != expected:
+            continue
+        key = (q.fixture_id, q.market, q.outcome)
+        if key in seen:
+            continue
+        seen.add(key)
+        observation = observations.get(q.id)
+        observed_at = observation.observed_at if observation else q.fetched_at
+        if settings.app_data_mode == "live":
+            verified_kickoff = (
+                observation.fixture_kickoff
+                if observation
+                else published.get(q.id, {}).get("kickoff")
+            )
+            if verified_kickoff is None or utc(verified_kickoff) != utc(f.kickoff):
+                continue
+        if (
+            settings.app_data_mode == "live"
+            and latest_sweep
+            and q.market in {"1x2", "totals"}
+            and utc(observed_at) < utc(latest_sweep)
+        ):
+            continue
+        age = (at - utc(observed_at)).total_seconds()
+        if (
+            settings.app_data_mode == "live"
+            and q.market not in {"1x2", "totals"}
+            and q.fixture_id in detail_sweeps
+            and utc(observed_at) < detail_sweeps[q.fixture_id]
+        ):
+            continue
+        if settings.app_data_mode == "live" and (
+            q.source_updated_at is None or not 0 <= age <= min(settings.odds_poll_seconds, 259200)
+        ):
+            continue
+        if comp.provider_id.split(":")[1] in {str(c.id) for c in EUROPEAN_COMPETITIONS} and utc(
+            f.kickoff
+        ) > at + timedelta(days=14):
+            continue
+        home, away = teams[f.home_id], teams[f.away_id]
+        row = published.get(
+            q.id,
+            {
+                "id": None,
+                "quote_id": q.id,
+                "fixture_id": f.id,
+                "home": home.name,
+                "away": away.name,
+                "home_logo": logo(home),
+                "away_logo": logo(away),
+                "competition_id": comp.id,
+                "competition": comp.name,
+                "kickoff": utc(f.kickoff),
+                "market": q.market,
+                "outcome": q.outcome,
+                "probability": None,
+                "odds": float(q.price),
+                "bookmaker": book.name,
+                "bookmaker_id": book.id,
+                "region": book.region,
+                "mode": f.mode,
+                "stale": True,
+                "fetched_at": utc(q.fetched_at),
+                "source_updated_at": q.source_updated_at,
+            },
+        )
+        result.append({**row, "observed_at": utc(observed_at)})
+    return result
 
 
-def match_row(db, f, quotes, include_markets=True):
-    prediction = db.scalar(
+def match_context(db, fixtures):
+    ids = [fixture.id for fixture in fixtures]
+    team_ids = {team_id for fixture in fixtures for team_id in (fixture.home_id, fixture.away_id)}
+    predictions = {}
+    for prediction in db.scalars(
         select(Prediction)
-        .where(Prediction.fixture_id == f.id)
+        .where(Prediction.fixture_id.in_(ids), Prediction.mode == settings.app_data_mode)
         .order_by(Prediction.generated_at.desc())
+    ):
+        predictions.setdefault(prediction.fixture_id, prediction)
+    return {
+        "predictions": predictions,
+        "teams": {team.id: team for team in db.scalars(select(Team).where(Team.id.in_(team_ids)))},
+        "competitions": {
+            comp.id: comp
+            for comp in db.scalars(
+                select(Competition).where(Competition.id.in_({f.competition_id for f in fixtures}))
+            )
+        },
+    }
+
+
+def match_row(
+    db, f, quotes, include_markets=True, context=None, market_key="all", include_unpriced=False
+):
+    prediction = (
+        context["predictions"].get(f.id)
+        if context is not None
+        else db.scalar(
+            select(Prediction)
+            .where(Prediction.fixture_id == f.id, Prediction.mode == f.mode)
+            .order_by(Prediction.generated_at.desc())
+        )
     )
     if prediction and utc(prediction.fixture_kickoff) != utc(f.kickoff):
         prediction = None
-    home, away = db.get(Team, f.home_id), db.get(Team, f.away_id)
+    home, away = (
+        (context["teams"][f.home_id], context["teams"][f.away_id])
+        if context is not None
+        else (db.get(Team, f.home_id), db.get(Team, f.away_id))
+    )
     catalog = markets(prediction) if include_markets else []
+    fixture_quotes = [quote for quote in quotes if quote["fixture_id"] == f.id]
+    if include_markets:
+        for key in dict.fromkeys(quote["market"] for quote in fixture_quotes):
+            probabilities = market_probabilities(prediction, key) if prediction else {}
+            quoted = {quote["outcome"] for quote in fixture_quotes if quote["market"] == key}
+            entry = next((market for market in catalog if market["key"] == key), None)
+            if entry is None:
+                name = {
+                    "1x2": "Match result · 1X2",
+                    "btts": "Both teams to score",
+                    "double_chance": "Double chance",
+                }.get(key)
+                if name is None:
+                    line = "2.5" if key == "totals" else key.rsplit("_", 1)[-1]
+                    name = (
+                        ("First-half goals" if key.startswith("half_") else "Under/over goals")
+                        + " · "
+                        + line
+                    )
+                entry = {
+                    "key": key,
+                    "name": name,
+                    "group": "First half"
+                    if key.startswith("half_")
+                    else "Goals"
+                    if key.startswith("totals")
+                    else "Popular",
+                    "outcomes": {},
+                }
+                catalog.append(entry)
+            if not entry["outcomes"]:
+                entry["outcomes"] = {
+                    outcome: probabilities.get(outcome)
+                    for outcome in (
+                        "home",
+                        "draw",
+                        "away",
+                        "yes",
+                        "no",
+                        "1x",
+                        "x2",
+                        "12",
+                        "over",
+                        "under",
+                    )
+                    if outcome in quoted
+                }
+    if market_key != "all":
+        catalog = [market for market in catalog if matches_market(market["key"], market_key)]
     for market in catalog:
         market["picks"] = []
         alternatives = market.pop("outcomes")
@@ -126,6 +364,8 @@ def match_row(db, f, quotes, include_markets=True):
             ]
             prices.sort(key=lambda q: (q["stale"], -q["odds"]))
             best = prices[0] if prices else None
+            if f.mode == "live" and best is None and not include_unpriced:
+                continue
             market["picks"].append(
                 {
                     "fixture_id": f.id,
@@ -140,7 +380,15 @@ def match_row(db, f, quotes, include_markets=True):
                         home.name,
                         away.name,
                         alternatives,
-                    ),
+                    )
+                    if prediction and probability is not None
+                    else {
+                        "summary": "This price comes from the sportsbook. More verified match history is needed before the model can assess this selection.",
+                        "heading": "Bookmaker price",
+                        "model_favors": False,
+                        "signals": [],
+                        "caution": "Bookmaker odds are a price, not a model prediction.",
+                    },
                     "odds": best["odds"] if best else None,
                     "bookmaker": best["bookmaker"] if best else None,
                     "stale": best["stale"] if best else False,
@@ -162,12 +410,16 @@ def match_row(db, f, quotes, include_markets=True):
         "away": away.name,
         "home_logo": logo(home),
         "away_logo": logo(away),
-        "competition": db.get(Competition, f.competition_id).name,
+        "competition": (
+            context["competitions"][f.competition_id]
+            if context is not None
+            else db.get(Competition, f.competition_id)
+        ).name,
         "competition_id": f.competition_id,
         "kickoff": utc(f.kickoff),
         "status": f.status,
         "mode": f.mode,
-        "markets": catalog,
+        "markets": [market for market in catalog if market["picks"]],
         "prediction_id": prediction.id if prediction else None,
     }
 
@@ -175,18 +427,28 @@ def match_row(db, f, quotes, include_markets=True):
 @router.get("/matchday")
 def matchday(
     team: str = Query("", max_length=80),
-    period: str = Query("week", pattern="^(today|tomorrow|week)$"),
+    period: str = Query("week", pattern="^(today|tomorrow|week|fortnight)$"),
     league: str = "",
+    summary: bool = False,
+    market: str = Query(
+        "all",
+        pattern=r"^(all|1x2|btts|totals|totals_all|half_totals_all|totals_[0-9]\.5|half_totals_[0-9]\.5|double_chance)$",
+    ),
     db=Depends(get_db),
 ):
     at = now()
-    day = at.replace(hour=0, minute=0, second=0, microsecond=0)
+    from zoneinfo import ZoneInfo
+
+    day = at.astimezone(ZoneInfo("Europe/Belgrade")).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
     start = day + timedelta(days=1) if period == "tomorrow" else at
     end = (
         day + timedelta(days=2 if period == "tomorrow" else 1)
-        if period != "week"
-        else at + timedelta(days=7)
+        if period not in {"week", "fortnight"}
+        else at + timedelta(days=14 if period == "fortnight" else 7)
     )
+    start, end = utc(start), utc(end)
     allowed = [
         c.id
         for c in db.scalars(select(Competition))
@@ -206,8 +468,36 @@ def matchday(
     )
     if league:
         query = query.where(Fixture.competition_id == league)
-    quotes = current_quotes(db)
-    items = [match_row(db, f, quotes) for f in db.scalars(query)]
+    quotes = current_quotes(
+        db,
+        markets_filter=("1x2", "btts", "totals")
+        if summary
+        else (market,)
+        if market not in {"all", "totals_all", "half_totals_all"}
+        else None,
+    )
+    priced = {q["fixture_id"] for q in quotes}
+    fixtures = [
+        f
+        for f in db.scalars(query)
+        if settings.app_data_mode == "demo"
+        or (
+            f.id in priced
+            and (
+                summary
+                or market == "all"
+                or any(
+                    quote["fixture_id"] == f.id and matches_market(quote["market"], market)
+                    for quote in quotes
+                )
+            )
+        )
+    ]
+    context = match_context(db, fixtures)
+    items = [
+        match_row(db, f, quotes, include_markets=not summary, context=context, market_key=market)
+        for f in fixtures
+    ]
     return {
         "items": [r for r in items if team.casefold() in (r["home"] + " " + r["away"]).casefold()],
         "mode": settings.app_data_mode,
@@ -224,7 +514,8 @@ def recommendations(db=Depends(get_db)):
     return {
         "items": recommendation_rows(db, upcoming=True),
         "mode": settings.app_data_mode,
-        "window_hours": 24,
+        "window": "Earliest available matchday",
+        "timezone": "Europe/Belgrade",
         "order": "kickoff",
     }
 
@@ -241,7 +532,11 @@ class ParlayInput(BaseModel):
 
 
 def parlay_summary(legs):
-    probability = math.prod(x["probability"] for x in legs)
+    probability = (
+        math.prod(x["probability"] for x in legs)
+        if all(x["probability"] is not None for x in legs)
+        else None
+    )
     common = set(p["bookmaker"] for p in legs[0]["prices"])
     for leg in legs[1:]:
         common &= {p["bookmaker"] for p in leg["prices"]}
@@ -267,7 +562,12 @@ def parlay_summary(legs):
     return {
         "legs": legs,
         "probability": probability,
-        "failure_probability": 1 - probability,
+        "failure_probability": 1 - probability if probability is not None else None,
+        "confidence": "Estimate unavailable"
+        if probability is None
+        else "More likely to win than lose"
+        if probability > 0.5
+        else "Estimated chance of all picks winning",
         "combined_odds": combined,
         "prices": prices,
         "odds_basis": "Your entered prices"
@@ -298,7 +598,7 @@ def analyze(body: ParlayInput, db=Depends(get_db)):
             )
         ids.add(f.id)
         teams.update([f.home_id, f.away_id])
-        match = match_row(db, f, quotes)
+        match = match_row(db, f, quotes, include_unpriced=True)
         pick = next(
             (
                 p
@@ -334,7 +634,11 @@ def suggestions(
 ):
     if min_odds > max_odds:
         raise HTTPException(422, "Minimum odds must be below maximum odds.")
-    rows = [r for r in current_quotes(db) if recorded_price_usable(r)]
+    rows = [
+        r
+        for r in current_quotes(db, markets_filter=("1x2", "btts", "totals"))
+        if r["probability"] is not None and recorded_price_usable(r)
+    ]
     # Search up to 18 earliest fixtures and all priced outcomes per bookmaker/fixture.
     fixture_ids = list(
         dict.fromkeys(r["fixture_id"] for r in sorted(rows, key=lambda r: r["kickoff"]))

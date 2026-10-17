@@ -1,0 +1,1263 @@
+{
+  "1. FC Köln": {
+    "asset": "/clubs/football-data-team-1.png",
+    "provider": "football-data",
+    "provider_id": 1,
+    "provider_name": "1. FC Köln",
+    "source": "https://crests.football-data.org/1.png"
+  },
+  "AC Pisa": {
+    "asset": "/clubs/football-data-team-487.png",
+    "provider": "football-data",
+    "provider_id": 487,
+    "provider_name": "AC Pisa",
+    "source": "https://crests.football-data.org/487.png"
+  },
+  "AEK Athens": {
+    "asset": "/clubs/api-team-575.png",
+    "country": "Greece",
+    "provider_id": 575,
+    "provider_name": "AEK Athens FC",
+    "source": "https://media.api-sports.io/football/teams/575.png"
+  },
+  "AGF Aarhus": {
+    "asset": "/clubs/api-team-406.png",
+    "country": "Denmark",
+    "provider_id": 406,
+    "provider_name": "Aarhus",
+    "source": "https://media.api-sports.io/football/teams/406.png"
+  },
+  "AZ Alkmaar": {
+    "asset": "/clubs/api-team-201.png",
+    "country": "Netherlands",
+    "provider_id": 201,
+    "provider_name": "AZ Alkmaar",
+    "source": "https://media.api-sports.io/football/teams/201.png"
+  },
+  "Ajax": {
+    "asset": "/clubs/api-team-194.png",
+    "country": "Netherlands",
+    "provider_id": 194,
+    "provider_name": "Ajax",
+    "source": "https://media.api-sports.io/football/teams/194.png"
+  },
+  "Alavés": {
+    "asset": "/clubs/football-data-team-263.png",
+    "provider": "football-data",
+    "provider_id": 263,
+    "provider_name": "Alavés",
+    "source": "https://crests.football-data.org/263.png"
+  },
+  "Anderlecht": {
+    "asset": "/clubs/api-team-554.png",
+    "country": "Belgium",
+    "provider_id": 554,
+    "provider_name": "Anderlecht",
+    "source": "https://media.api-sports.io/football/teams/554.png"
+  },
+  "Angers SCO": {
+    "asset": "/clubs/football-data-team-532.png",
+    "provider": "football-data",
+    "provider_id": 532,
+    "provider_name": "Angers SCO",
+    "source": "https://crests.football-data.org/532.png"
+  },
+  "Arsenal": {
+    "asset": "/clubs/football-data-team-57.png",
+    "provider": "football-data",
+    "provider_id": 57,
+    "provider_name": "Arsenal",
+    "source": "https://crests.football-data.org/57.png"
+  },
+  "Aston Villa": {
+    "asset": "/clubs/football-data-team-58.png",
+    "provider": "football-data",
+    "provider_id": 58,
+    "provider_name": "Aston Villa",
+    "source": "https://crests.football-data.org/58.png"
+  },
+  "Atalanta": {
+    "asset": "/clubs/football-data-team-102.png",
+    "provider": "football-data",
+    "provider_id": 102,
+    "provider_name": "Atalanta",
+    "source": "https://crests.football-data.org/102.png"
+  },
+  "Athletic": {
+    "asset": "/clubs/football-data-team-77.png",
+    "provider": "football-data",
+    "provider_id": 77,
+    "provider_name": "Athletic",
+    "source": "https://crests.football-data.org/77.png"
+  },
+  "Atleti": {
+    "asset": "/clubs/football-data-team-78.png",
+    "provider": "football-data",
+    "provider_id": 78,
+    "provider_name": "Atleti",
+    "source": "https://crests.football-data.org/78.png"
+  },
+  "Augsburg": {
+    "asset": "/clubs/football-data-team-16.png",
+    "provider": "football-data",
+    "provider_id": 16,
+    "provider_name": "Augsburg",
+    "source": "https://crests.football-data.org/16.png"
+  },
+  "Auxerre": {
+    "asset": "/clubs/football-data-team-519.png",
+    "provider": "football-data",
+    "provider_id": 519,
+    "provider_name": "Auxerre",
+    "source": "https://crests.football-data.org/519.png"
+  },
+  "Barça": {
+    "asset": "/clubs/football-data-team-81.png",
+    "provider": "football-data",
+    "provider_id": 81,
+    "provider_name": "Barça",
+    "source": "https://crests.football-data.org/81.png"
+  },
+  "Bayern": {
+    "asset": "/clubs/football-data-team-5.png",
+    "provider": "football-data",
+    "provider_id": 5,
+    "provider_name": "Bayern",
+    "source": "https://crests.football-data.org/5.png"
+  },
+  "Benfica": {
+    "asset": "/clubs/api-team-211.png",
+    "country": "Portugal",
+    "provider_id": 211,
+    "provider_name": "Benfica",
+    "source": "https://media.api-sports.io/football/teams/211.png"
+  },
+  "Besiktas JK": {
+    "asset": "/clubs/api-team-549.png",
+    "country": "Turkey",
+    "provider_id": 549,
+    "provider_name": "Beşiktaş",
+    "source": "https://media.api-sports.io/football/teams/549.png"
+  },
+  "Bodø/Glimt": {
+    "asset": "/clubs/api-team-327.png",
+    "country": "Norway",
+    "provider_id": 327,
+    "provider_name": "Bodo/Glimt",
+    "source": "https://media.api-sports.io/football/teams/327.png"
+  },
+  "Bologna": {
+    "asset": "/clubs/football-data-team-103.png",
+    "provider": "football-data",
+    "provider_id": 103,
+    "provider_name": "Bologna",
+    "source": "https://crests.football-data.org/103.png"
+  },
+  "Bournemouth": {
+    "asset": "/clubs/football-data-team-1044.png",
+    "provider": "football-data",
+    "provider_id": 1044,
+    "provider_name": "Bournemouth",
+    "source": "https://crests.football-data.org/bournemouth.png"
+  },
+  "Bremen": {
+    "asset": "/clubs/football-data-team-12.png",
+    "provider": "football-data",
+    "provider_id": 12,
+    "provider_name": "Bremen",
+    "source": "https://crests.football-data.org/12.png"
+  },
+  "Brentford": {
+    "asset": "/clubs/football-data-team-402.png",
+    "provider": "football-data",
+    "provider_id": 402,
+    "provider_name": "Brentford",
+    "source": "https://crests.football-data.org/402.png"
+  },
+  "Brest": {
+    "asset": "/clubs/football-data-team-512.png",
+    "provider": "football-data",
+    "provider_id": 512,
+    "provider_name": "Brest",
+    "source": "https://crests.football-data.org/512.png"
+  },
+  "Brighton Hove": {
+    "asset": "/clubs/football-data-team-397.png",
+    "provider": "football-data",
+    "provider_id": 397,
+    "provider_name": "Brighton Hove",
+    "source": "https://crests.football-data.org/397.png"
+  },
+  "Burnley": {
+    "asset": "/clubs/football-data-team-328.png",
+    "provider": "football-data",
+    "provider_id": 328,
+    "provider_name": "Burnley",
+    "source": "https://crests.football-data.org/328.png"
+  },
+  "Cagliari": {
+    "asset": "/clubs/football-data-team-104.png",
+    "provider": "football-data",
+    "provider_id": 104,
+    "provider_name": "Cagliari",
+    "source": "https://crests.football-data.org/104.png"
+  },
+  "Celta": {
+    "asset": "/clubs/football-data-team-558.png",
+    "provider": "football-data",
+    "provider_id": 558,
+    "provider_name": "Celta",
+    "source": "https://crests.football-data.org/558.png"
+  },
+  "Celtic": {
+    "asset": "/clubs/api-team-247.png",
+    "country": "Scotland",
+    "provider_id": 247,
+    "provider_name": "Celtic",
+    "source": "https://media.api-sports.io/football/teams/247.png"
+  },
+  "Chelsea": {
+    "asset": "/clubs/football-data-team-61.png",
+    "provider": "football-data",
+    "provider_id": 61,
+    "provider_name": "Chelsea",
+    "source": "https://crests.football-data.org/61.png"
+  },
+  "Club Brugge": {
+    "asset": "/clubs/api-team-569.png",
+    "country": "Belgium",
+    "identity_source": "https://www.uefa.com/uefachampionsleague/clubs/50043/",
+    "provider_id": 569,
+    "provider_name": "Club Brugge KV",
+    "source": "https://media.api-sports.io/football/teams/569.png"
+  },
+  "Como 1907": {
+    "asset": "/clubs/football-data-team-7397.png",
+    "provider": "football-data",
+    "provider_id": 7397,
+    "provider_name": "Como 1907",
+    "source": "https://crests.football-data.org/7397.png"
+  },
+  "Coventry City": {
+    "asset": "/clubs/football-data-team-1076.png",
+    "provider": "football-data",
+    "provider_id": 1076,
+    "provider_name": "Coventry City",
+    "source": "https://crests.football-data.org/1076.png"
+  },
+  "Cremonese": {
+    "asset": "/clubs/football-data-team-457.png",
+    "provider": "football-data",
+    "provider_id": 457,
+    "provider_name": "Cremonese",
+    "source": "https://crests.football-data.org/457.png"
+  },
+  "Crystal Palace": {
+    "asset": "/clubs/football-data-team-354.png",
+    "provider": "football-data",
+    "provider_id": 354,
+    "provider_name": "Crystal Palace",
+    "source": "https://crests.football-data.org/354.png"
+  },
+  "Deportivo": {
+    "asset": "/clubs/football-data-team-560.png",
+    "provider": "football-data",
+    "provider_id": 560,
+    "provider_name": "Deportivo",
+    "source": "https://crests.football-data.org/560.png"
+  },
+  "Dinamo Zagreb": {
+    "asset": "/clubs/api-team-620.png",
+    "country": "Croatia",
+    "provider_id": 620,
+    "provider_name": "Dinamo Zagreb",
+    "source": "https://media.api-sports.io/football/teams/620.png"
+  },
+  "Dortmund": {
+    "asset": "/clubs/football-data-team-4.png",
+    "provider": "football-data",
+    "provider_id": 4,
+    "provider_name": "Dortmund",
+    "source": "https://crests.football-data.org/4.png"
+  },
+  "Elche": {
+    "asset": "/clubs/football-data-team-285.png",
+    "provider": "football-data",
+    "provider_id": 285,
+    "provider_name": "Elche",
+    "source": "https://crests.football-data.org/285.png"
+  },
+  "Elversberg": {
+    "asset": "/clubs/football-data-team-719.png",
+    "provider": "football-data",
+    "provider_id": 719,
+    "provider_name": "Elversberg",
+    "source": "https://crests.football-data.org/719.png"
+  },
+  "Espanyol": {
+    "asset": "/clubs/football-data-team-80.png",
+    "provider": "football-data",
+    "provider_id": 80,
+    "provider_name": "Espanyol",
+    "source": "https://crests.football-data.org/80.png"
+  },
+  "Everton": {
+    "asset": "/clubs/football-data-team-62.png",
+    "provider": "football-data",
+    "provider_id": 62,
+    "provider_name": "Everton",
+    "source": "https://crests.football-data.org/62.png"
+  },
+  "FC Ararat-Armenia": {
+    "asset": "/clubs/api-team-3683.png",
+    "country": "Armenia",
+    "provider_id": 3683,
+    "provider_name": "Ararat-Armenia",
+    "source": "https://media.api-sports.io/football/teams/3683.png"
+  },
+  "FC Copenhagen": {
+    "asset": "/clubs/api-team-400.png",
+    "country": "Denmark",
+    "provider_id": 400,
+    "provider_name": "FC Copenhagen",
+    "source": "https://media.api-sports.io/football/teams/400.png"
+  },
+  "FC Iberia 1999": {
+    "asset": "/clubs/api-team-3502.png",
+    "country": "Georgia",
+    "provider_id": 3502,
+    "provider_name": "FC Iberia 1999",
+    "source": "https://media.api-sports.io/football/teams/3502.png"
+  },
+  "FC Kairat": {
+    "asset": "/clubs/api-team-664.png",
+    "country": "Kazakhstan",
+    "provider_id": 664,
+    "provider_name": "Kairat Almaty",
+    "source": "https://media.api-sports.io/football/teams/664.png"
+  },
+  "FC Lugano": {
+    "asset": "/clubs/api-team-606.png",
+    "country": "Switzerland",
+    "provider_id": 606,
+    "provider_name": "FC Lugano",
+    "source": "https://media.api-sports.io/football/teams/606.png"
+  },
+  "FC Metz": {
+    "asset": "/clubs/football-data-team-545.png",
+    "provider": "football-data",
+    "provider_id": 545,
+    "provider_name": "FC Metz",
+    "source": "https://crests.football-data.org/545.png"
+  },
+  "FC Midtjylland": {
+    "asset": "/clubs/api-team-397.png",
+    "country": "Denmark",
+    "provider_id": 397,
+    "provider_name": "FC Midtjylland",
+    "source": "https://media.api-sports.io/football/teams/397.png"
+  },
+  "FC Nordsjaelland": {
+    "asset": "/clubs/api-team-398.png",
+    "country": "Denmark",
+    "provider_id": 398,
+    "provider_name": "FC Nordsjaelland",
+    "source": "https://media.api-sports.io/football/teams/398.png"
+  },
+  "FC Thun": {
+    "asset": "/clubs/api-team-1012.png",
+    "country": "Switzerland",
+    "provider_id": 1012,
+    "provider_name": "FC Thun",
+    "source": "https://media.api-sports.io/football/teams/1012.png"
+  },
+  "FC Twente Enschede": {
+    "asset": "/clubs/api-team-415.png",
+    "country": "Netherlands",
+    "provider_id": 415,
+    "provider_name": "Twente",
+    "source": "https://media.api-sports.io/football/teams/415.png"
+  },
+  "FK Borac Banja Luka": {
+    "asset": "/clubs/api-team-3364.png",
+    "country": "Bosnia",
+    "provider_id": 3364,
+    "provider_name": "Borac Banja Luka",
+    "source": "https://media.api-sports.io/football/teams/3364.png"
+  },
+  "FK Jablonec": {
+    "asset": "/clubs/api-team-1122.png",
+    "country": "Czech-Republic",
+    "provider_id": 1122,
+    "provider_name": "FK Jablonec",
+    "source": "https://media.api-sports.io/football/teams/1122.png"
+  },
+  "FK Kauno Žalgiris": {
+    "asset": "/clubs/api-team-3872.png",
+    "country": "Lithuania",
+    "provider_id": 3872,
+    "provider_name": "Kauno Žalgiris",
+    "source": "https://media.api-sports.io/football/teams/3872.png"
+  },
+  "Fenerbahce": {
+    "asset": "/clubs/api-team-611.png",
+    "country": "Turkey",
+    "provider_id": 611,
+    "provider_name": "Fenerbahçe",
+    "source": "https://media.api-sports.io/football/teams/611.png"
+  },
+  "Ferencváros TC": {
+    "asset": "/clubs/api-team-651.png",
+    "country": "Hungary",
+    "provider_id": 651,
+    "provider_name": "Ferencvarosi TC",
+    "source": "https://media.api-sports.io/football/teams/651.png"
+  },
+  "Feyenoord": {
+    "asset": "/clubs/api-team-209.png",
+    "country": "Netherlands",
+    "provider_id": 209,
+    "provider_name": "Feyenoord",
+    "source": "https://media.api-sports.io/football/teams/209.png"
+  },
+  "Fiorentina": {
+    "asset": "/clubs/football-data-team-99.png",
+    "provider": "football-data",
+    "provider_id": 99,
+    "provider_name": "Fiorentina",
+    "source": "https://crests.football-data.org/99.png"
+  },
+  "Frankfurt": {
+    "asset": "/clubs/football-data-team-19.png",
+    "provider": "football-data",
+    "provider_id": 19,
+    "provider_name": "Frankfurt",
+    "source": "https://crests.football-data.org/19.png"
+  },
+  "Freiburg": {
+    "asset": "/clubs/football-data-team-17.png",
+    "provider": "football-data",
+    "provider_id": 17,
+    "provider_name": "Freiburg",
+    "source": "https://crests.football-data.org/17.png"
+  },
+  "Frosinone": {
+    "asset": "/clubs/football-data-team-470.png",
+    "provider": "football-data",
+    "provider_id": 470,
+    "provider_name": "Frosinone",
+    "source": "https://crests.football-data.org/470.png"
+  },
+  "Fulham": {
+    "asset": "/clubs/football-data-team-63.png",
+    "provider": "football-data",
+    "provider_id": 63,
+    "provider_name": "Fulham",
+    "source": "https://crests.football-data.org/63.png"
+  },
+  "Galatasaray": {
+    "asset": "/clubs/api-team-645.png",
+    "provider_id": 645,
+    "provider_name": "Galatasaray",
+    "source": "https://media.api-sports.io/football/teams/645.png"
+  },
+  "Genoa": {
+    "asset": "/clubs/football-data-team-107.png",
+    "provider": "football-data",
+    "provider_id": 107,
+    "provider_name": "Genoa",
+    "source": "https://crests.football-data.org/107.png"
+  },
+  "Gent": {
+    "asset": "/clubs/api-team-631.png",
+    "country": "Belgium",
+    "provider_id": 631,
+    "provider_name": "Gent",
+    "source": "https://media.api-sports.io/football/teams/631.png"
+  },
+  "Getafe": {
+    "asset": "/clubs/football-data-team-82.png",
+    "provider": "football-data",
+    "provider_id": 82,
+    "provider_name": "Getafe",
+    "source": "https://crests.football-data.org/82.png"
+  },
+  "Girona": {
+    "asset": "/clubs/football-data-team-298.png",
+    "provider": "football-data",
+    "provider_id": 298,
+    "provider_name": "Girona",
+    "source": "https://crests.football-data.org/298.png"
+  },
+  "HSV": {
+    "asset": "/clubs/football-data-team-7.png",
+    "provider": "football-data",
+    "provider_id": 7,
+    "provider_name": "HSV",
+    "source": "https://crests.football-data.org/7.png"
+  },
+  "Hajduk Split": {
+    "asset": "/clubs/api-team-608.png",
+    "country": "Croatia",
+    "provider_id": 608,
+    "provider_name": "HNK Hajduk Split",
+    "source": "https://media.api-sports.io/football/teams/608.png"
+  },
+  "Hapoel Be'er Sheva": {
+    "asset": "/clubs/api-team-563.png",
+    "country": "Israel",
+    "provider_id": 563,
+    "provider_name": "Hapoel Beer Sheva",
+    "source": "https://media.api-sports.io/football/teams/563.png"
+  },
+  "Hearts": {
+    "asset": "/clubs/api-team-254.png",
+    "country": "Scotland",
+    "provider_id": 254,
+    "provider_name": "Heart Of Midlothian",
+    "source": "https://media.api-sports.io/football/teams/254.png"
+  },
+  "Heidenheim": {
+    "asset": "/clubs/football-data-team-44.png",
+    "provider": "football-data",
+    "provider_id": 44,
+    "provider_name": "Heidenheim",
+    "source": "https://crests.football-data.org/44.png"
+  },
+  "Hoffenheim": {
+    "asset": "/clubs/football-data-team-2.png",
+    "provider": "football-data",
+    "provider_id": 2,
+    "provider_name": "Hoffenheim",
+    "source": "https://crests.football-data.org/2.png"
+  },
+  "Hull City": {
+    "asset": "/clubs/football-data-team-322.png",
+    "provider": "football-data",
+    "provider_id": 322,
+    "provider_name": "Hull City",
+    "source": "https://crests.football-data.org/322.png"
+  },
+  "Inter": {
+    "asset": "/clubs/football-data-team-108.png",
+    "provider": "football-data",
+    "provider_id": 108,
+    "provider_name": "Inter",
+    "source": "https://crests.football-data.org/108.png"
+  },
+  "Inter Club d'Escaldes": {
+    "asset": "/clubs/api-team-3342.png",
+    "country": "Andorra",
+    "provider_id": 3342,
+    "provider_name": "Inter Club d'Escaldes",
+    "source": "https://media.api-sports.io/football/teams/3342.png"
+  },
+  "Ipswich Town": {
+    "asset": "/clubs/football-data-team-349.png",
+    "provider": "football-data",
+    "provider_id": 349,
+    "provider_name": "Ipswich Town",
+    "source": "https://crests.football-data.org/349.png"
+  },
+  "Jagiellonia Białystok": {
+    "asset": "/clubs/api-team-336.png",
+    "country": "Poland",
+    "provider_id": 336,
+    "provider_name": "Jagiellonia",
+    "source": "https://media.api-sports.io/football/teams/336.png"
+  },
+  "Juventus": {
+    "asset": "/clubs/football-data-team-109.png",
+    "provider": "football-data",
+    "provider_id": 109,
+    "provider_name": "Juventus",
+    "source": "https://crests.football-data.org/109.png"
+  },
+  "KF Egnatia": {
+    "asset": "/clubs/api-team-3327.png",
+    "country": "Albania",
+    "provider_id": 3327,
+    "provider_name": "Egnatia Rrogozhinë",
+    "source": "https://media.api-sports.io/football/teams/3327.png"
+  },
+  "KuPS Kuopio": {
+    "asset": "/clubs/api-team-1165.png",
+    "country": "Finland",
+    "provider_id": 1165,
+    "provider_name": "KuPS",
+    "source": "https://media.api-sports.io/football/teams/1165.png"
+  },
+  "LASK": {
+    "asset": "/clubs/api-team-1026.png",
+    "country": "Austria",
+    "provider_id": 1026,
+    "provider_name": "Lask Linz",
+    "source": "https://media.api-sports.io/football/teams/1026.png"
+  },
+  "Lazio": {
+    "asset": "/clubs/football-data-team-110.png",
+    "provider": "football-data",
+    "provider_id": 110,
+    "provider_name": "Lazio",
+    "source": "https://crests.football-data.org/110.png"
+  },
+  "Le Havre": {
+    "asset": "/clubs/football-data-team-533.png",
+    "provider": "football-data",
+    "provider_id": 533,
+    "provider_name": "Le Havre",
+    "source": "https://crests.football-data.org/533.png"
+  },
+  "Le Mans": {
+    "asset": "/clubs/football-data-team-535.png",
+    "provider": "football-data",
+    "provider_id": 535,
+    "provider_name": "Le Mans",
+    "source": "https://crests.football-data.org/535.png"
+  },
+  "Lecce": {
+    "asset": "/clubs/football-data-team-5890.png",
+    "provider": "football-data",
+    "provider_id": 5890,
+    "provider_name": "Lecce",
+    "source": "https://crests.football-data.org/5890.png"
+  },
+  "Lech Poznań": {
+    "asset": "/clubs/api-team-347.png",
+    "country": "Poland",
+    "provider_id": 347,
+    "provider_name": "Lech Poznan",
+    "source": "https://media.api-sports.io/football/teams/347.png"
+  },
+  "Leeds United": {
+    "asset": "/clubs/football-data-team-341.png",
+    "provider": "football-data",
+    "provider_id": 341,
+    "provider_name": "Leeds United",
+    "source": "https://crests.football-data.org/341.png"
+  },
+  "Levante": {
+    "asset": "/clubs/football-data-team-88.png",
+    "provider": "football-data",
+    "provider_id": 88,
+    "provider_name": "Levante",
+    "source": "https://crests.football-data.org/88.png"
+  },
+  "Leverkusen": {
+    "asset": "/clubs/football-data-team-3.png",
+    "provider": "football-data",
+    "provider_id": 3,
+    "provider_name": "Leverkusen",
+    "source": "https://crests.football-data.org/3.png"
+  },
+  "Lille": {
+    "asset": "/clubs/football-data-team-521.png",
+    "provider": "football-data",
+    "provider_id": 521,
+    "provider_name": "Lille",
+    "source": "https://crests.football-data.org/521.png"
+  },
+  "Lillestrom": {
+    "asset": "/clubs/api-team-321.png",
+    "country": "Norway",
+    "provider_id": 321,
+    "provider_name": "Lillestrom",
+    "source": "https://media.api-sports.io/football/teams/321.png"
+  },
+  "Lincoln Red Imps FC": {
+    "asset": "/clubs/api-team-667.png",
+    "country": "Gibraltar",
+    "provider_id": 667,
+    "provider_name": "Lincoln Red Imps FC",
+    "source": "https://media.api-sports.io/football/teams/667.png"
+  },
+  "Liverpool": {
+    "asset": "/clubs/football-data-team-64.png",
+    "provider": "football-data",
+    "provider_id": 64,
+    "provider_name": "Liverpool",
+    "source": "https://crests.football-data.org/64.png"
+  },
+  "Lorient": {
+    "asset": "/clubs/football-data-team-525.png",
+    "provider": "football-data",
+    "provider_id": 525,
+    "provider_name": "Lorient",
+    "source": "https://crests.football-data.org/525.png"
+  },
+  "M'gladbach": {
+    "asset": "/clubs/football-data-team-18.png",
+    "provider": "football-data",
+    "provider_id": 18,
+    "provider_name": "M'gladbach",
+    "source": "https://crests.football-data.org/18.png"
+  },
+  "Mainz": {
+    "asset": "/clubs/football-data-team-15.png",
+    "provider": "football-data",
+    "provider_id": 15,
+    "provider_name": "Mainz",
+    "source": "https://crests.football-data.org/15.png"
+  },
+  "Mallorca": {
+    "asset": "/clubs/football-data-team-89.png",
+    "provider": "football-data",
+    "provider_id": 89,
+    "provider_name": "Mallorca",
+    "source": "https://crests.football-data.org/89.png"
+  },
+  "Man City": {
+    "asset": "/clubs/football-data-team-65.png",
+    "provider": "football-data",
+    "provider_id": 65,
+    "provider_name": "Man City",
+    "source": "https://crests.football-data.org/65.png"
+  },
+  "Man United": {
+    "asset": "/clubs/football-data-team-66.png",
+    "provider": "football-data",
+    "provider_id": 66,
+    "provider_name": "Man United",
+    "source": "https://crests.football-data.org/66.png"
+  },
+  "Marseille": {
+    "asset": "/clubs/football-data-team-516.png",
+    "provider": "football-data",
+    "provider_id": 516,
+    "provider_name": "Marseille",
+    "source": "https://crests.football-data.org/516.png"
+  },
+  "Milan": {
+    "asset": "/clubs/football-data-team-98.png",
+    "provider": "football-data",
+    "provider_id": 98,
+    "provider_name": "Milan",
+    "source": "https://crests.football-data.org/98.png"
+  },
+  "Mjällby AIF": {
+    "asset": "/clubs/api-team-2240.png",
+    "country": "Sweden",
+    "provider_id": 2240,
+    "provider_name": "Mjallby AIF",
+    "source": "https://media.api-sports.io/football/teams/2240.png"
+  },
+  "Monaco": {
+    "asset": "/clubs/football-data-team-548.png",
+    "provider": "football-data",
+    "provider_id": 548,
+    "provider_name": "Monaco",
+    "source": "https://crests.football-data.org/548.png"
+  },
+  "Monza": {
+    "asset": "/clubs/football-data-team-5911.png",
+    "provider": "football-data",
+    "provider_id": 5911,
+    "provider_name": "Monza",
+    "source": "https://crests.football-data.org/5911.png"
+  },
+  "Málaga": {
+    "asset": "/clubs/football-data-team-84.png",
+    "provider": "football-data",
+    "provider_id": 84,
+    "provider_name": "Málaga",
+    "source": "https://crests.football-data.org/84.png"
+  },
+  "NEC Nijmegen": {
+    "asset": "/clubs/api-team-413.png",
+    "country": "Netherlands",
+    "provider_id": 413,
+    "provider_name": "NEC Nijmegen",
+    "source": "https://media.api-sports.io/football/teams/413.png"
+  },
+  "NK Celje": {
+    "asset": "/clubs/api-team-4360.png",
+    "country": "Slovenia",
+    "provider_id": 4360,
+    "provider_name": "Celje",
+    "source": "https://media.api-sports.io/football/teams/4360.png"
+  },
+  "Nantes": {
+    "asset": "/clubs/football-data-team-543.png",
+    "provider": "football-data",
+    "provider_id": 543,
+    "provider_name": "Nantes",
+    "source": "https://crests.football-data.org/543.png"
+  },
+  "Napoli": {
+    "asset": "/clubs/football-data-team-113.png",
+    "provider": "football-data",
+    "provider_id": 113,
+    "provider_name": "Napoli",
+    "source": "https://crests.football-data.org/113.png"
+  },
+  "Newcastle": {
+    "asset": "/clubs/football-data-team-67.png",
+    "provider": "football-data",
+    "provider_id": 67,
+    "provider_name": "Newcastle",
+    "source": "https://crests.football-data.org/67.png"
+  },
+  "Nice": {
+    "asset": "/clubs/football-data-team-522.png",
+    "provider": "football-data",
+    "provider_id": 522,
+    "provider_name": "Nice",
+    "source": "https://crests.football-data.org/522.png"
+  },
+  "Nottingham": {
+    "asset": "/clubs/football-data-team-351.png",
+    "provider": "football-data",
+    "provider_id": 351,
+    "provider_name": "Nottingham",
+    "source": "https://crests.football-data.org/351.png"
+  },
+  "OFI Crete": {
+    "asset": "/clubs/api-team-1124.png",
+    "country": "Greece",
+    "provider_id": 1124,
+    "provider_name": "OFI",
+    "source": "https://media.api-sports.io/football/teams/1124.png"
+  },
+  "Olympiakos Piraeus": {
+    "asset": "/clubs/api-team-553.png",
+    "country": "Greece",
+    "provider_id": 553,
+    "provider_name": "Olympiakos Piraeus",
+    "source": "https://media.api-sports.io/football/teams/553.png"
+  },
+  "Olympique Lyon": {
+    "asset": "/clubs/football-data-team-523.png",
+    "provider": "football-data",
+    "provider_id": 523,
+    "provider_name": "Olympique Lyon",
+    "source": "https://crests.football-data.org/523.png"
+  },
+  "Omonoia FC": {
+    "asset": "/clubs/api-team-3402.png",
+    "country": "Cyprus",
+    "provider_id": 3402,
+    "provider_name": "Omonia Nicosia",
+    "source": "https://media.api-sports.io/football/teams/3402.png"
+  },
+  "Osasuna": {
+    "asset": "/clubs/football-data-team-79.png",
+    "provider": "football-data",
+    "provider_id": 79,
+    "provider_name": "Osasuna",
+    "source": "https://crests.football-data.org/79.png"
+  },
+  "PFC CSKA Sofia": {
+    "asset": "/clubs/api-team-853.png",
+    "country": "Bulgaria",
+    "provider_id": 853,
+    "provider_name": "CSKA Sofia",
+    "source": "https://media.api-sports.io/football/teams/853.png"
+  },
+  "PFC Levski Sofia": {
+    "asset": "/clubs/api-team-646.png",
+    "country": "Bulgaria",
+    "provider_id": 646,
+    "provider_name": "Levski Sofia",
+    "source": "https://media.api-sports.io/football/teams/646.png"
+  },
+  "PSG": {
+    "asset": "/clubs/football-data-team-524.png",
+    "provider": "football-data",
+    "provider_id": 524,
+    "provider_name": "PSG",
+    "source": "https://crests.football-data.org/524.png"
+  },
+  "PSV Eindhoven": {
+    "asset": "/clubs/api-team-197.png",
+    "provider_id": 197,
+    "provider_name": "PSV Eindhoven",
+    "source": "https://media.api-sports.io/football/teams/197.png"
+  },
+  "Pafos FC": {
+    "asset": "/clubs/api-team-3403.png",
+    "country": "Cyprus",
+    "provider_id": 3403,
+    "provider_name": "Pafos",
+    "source": "https://media.api-sports.io/football/teams/3403.png"
+  },
+  "Panathinaikos FC": {
+    "asset": "/clubs/api-team-617.png",
+    "country": "Greece",
+    "provider_id": 617,
+    "provider_name": "Panathinaikos",
+    "source": "https://media.api-sports.io/football/teams/617.png"
+  },
+  "Paris FC": {
+    "asset": "/clubs/football-data-team-1045.png",
+    "provider": "football-data",
+    "provider_id": 1045,
+    "provider_name": "Paris FC",
+    "source": "https://crests.football-data.org/1045.png"
+  },
+  "Parma": {
+    "asset": "/clubs/football-data-team-112.png",
+    "provider": "football-data",
+    "provider_id": 112,
+    "provider_name": "Parma",
+    "source": "https://crests.football-data.org/112.png"
+  },
+  "Porto": {
+    "asset": "/clubs/api-team-212.png",
+    "country": "Portugal",
+    "provider_id": 212,
+    "provider_name": "FC Porto",
+    "source": "https://media.api-sports.io/football/teams/212.png"
+  },
+  "RB Leipzig": {
+    "asset": "/clubs/football-data-team-721.png",
+    "provider": "football-data",
+    "provider_id": 721,
+    "provider_name": "RB Leipzig",
+    "source": "https://crests.football-data.org/721.png"
+  },
+  "RC Lens": {
+    "asset": "/clubs/football-data-team-546.png",
+    "provider": "football-data",
+    "provider_id": 546,
+    "provider_name": "RC Lens",
+    "source": "https://crests.football-data.org/546.png"
+  },
+  "Rayo Vallecano": {
+    "asset": "/clubs/football-data-team-87.png",
+    "provider": "football-data",
+    "provider_id": 87,
+    "provider_name": "Rayo Vallecano",
+    "source": "https://crests.football-data.org/87.png"
+  },
+  "Real Betis": {
+    "asset": "/clubs/football-data-team-90.png",
+    "provider": "football-data",
+    "provider_id": 90,
+    "provider_name": "Real Betis",
+    "source": "https://crests.football-data.org/90.png"
+  },
+  "Real Madrid": {
+    "asset": "/clubs/football-data-team-86.png",
+    "provider": "football-data",
+    "provider_id": 86,
+    "provider_name": "Real Madrid",
+    "source": "https://crests.football-data.org/86.png"
+  },
+  "Real Oviedo": {
+    "asset": "/clubs/football-data-team-1048.png",
+    "provider": "football-data",
+    "provider_id": 1048,
+    "provider_name": "Real Oviedo",
+    "source": "https://crests.football-data.org/1048.png"
+  },
+  "Real Sociedad": {
+    "asset": "/clubs/football-data-team-92.png",
+    "provider": "football-data",
+    "provider_id": 92,
+    "provider_name": "Real Sociedad",
+    "source": "https://crests.football-data.org/92.png"
+  },
+  "Red Star Belgrade": {
+    "asset": "/clubs/api-team-598.png",
+    "country": "Serbia",
+    "provider_id": 598,
+    "provider_name": "FK Crvena Zvezda",
+    "source": "https://media.api-sports.io/football/teams/598.png"
+  },
+  "Riga FC": {
+    "asset": "/clubs/api-team-2263.png",
+    "country": "Latvia",
+    "provider_id": 2263,
+    "provider_name": "Riga FC",
+    "source": "https://media.api-sports.io/football/teams/2263.png"
+  },
+  "Roma": {
+    "asset": "/clubs/football-data-team-100.png",
+    "provider": "football-data",
+    "provider_id": 100,
+    "provider_name": "Roma",
+    "source": "https://crests.football-data.org/100.png"
+  },
+  "SC Braga": {
+    "asset": "/clubs/api-team-217.png",
+    "country": "Portugal",
+    "provider_id": 217,
+    "provider_name": "SC Braga",
+    "source": "https://media.api-sports.io/football/teams/217.png"
+  },
+  "SC Paderborn": {
+    "asset": "/clubs/football-data-team-29.png",
+    "provider": "football-data",
+    "provider_id": 29,
+    "provider_name": "SC Paderborn",
+    "source": "https://crests.football-data.org/29.png"
+  },
+  "SK Brann": {
+    "asset": "/clubs/api-team-319.png",
+    "country": "Norway",
+    "provider_id": 319,
+    "provider_name": "Brann",
+    "source": "https://media.api-sports.io/football/teams/319.png"
+  },
+  "SK Sturm Graz": {
+    "asset": "/clubs/api-team-637.png",
+    "country": "Austria",
+    "provider_id": 637,
+    "provider_name": "Sturm Graz",
+    "source": "https://media.api-sports.io/football/teams/637.png"
+  },
+  "Sabah FK": {
+    "asset": "/clubs/api-team-13976.png",
+    "country": "Azerbaijan",
+    "identity_source": "https://it.uefa.com/nationalassociations/teams/2609356--sabah/",
+    "provider_id": 13976,
+    "provider_name": "Sabah FA",
+    "source": "https://media.api-sports.io/football/teams/13976.png"
+  },
+  "Salzburg": {
+    "asset": "/clubs/api-team-571.png",
+    "country": "Austria",
+    "provider_id": 571,
+    "provider_name": "Red Bull Salzburg",
+    "source": "https://media.api-sports.io/football/teams/571.png"
+  },
+  "Santander": {
+    "asset": "/clubs/football-data-team-5335.png",
+    "provider": "football-data",
+    "provider_id": 5335,
+    "provider_name": "Santander",
+    "source": "https://crests.football-data.org/5335.png"
+  },
+  "Sassuolo": {
+    "asset": "/clubs/football-data-team-471.png",
+    "provider": "football-data",
+    "provider_id": 471,
+    "provider_name": "Sassuolo",
+    "source": "https://crests.football-data.org/471.png"
+  },
+  "Schalke": {
+    "asset": "/clubs/football-data-team-6.png",
+    "provider": "football-data",
+    "provider_id": 6,
+    "provider_name": "Schalke",
+    "source": "https://crests.football-data.org/6.png"
+  },
+  "Sevilla FC": {
+    "asset": "/clubs/football-data-team-559.png",
+    "provider": "football-data",
+    "provider_id": 559,
+    "provider_name": "Sevilla FC",
+    "source": "https://crests.football-data.org/559.png"
+  },
+  "Shakhtar Donetsk": {
+    "asset": "/clubs/api-team-550.png",
+    "country": "Ukraine",
+    "provider_id": 550,
+    "provider_name": "Shakhtar Donetsk",
+    "source": "https://media.api-sports.io/football/teams/550.png"
+  },
+  "Sint Truiden": {
+    "asset": "/clubs/api-team-735.png",
+    "country": "Belgium",
+    "provider_id": 735,
+    "provider_name": "St. Truiden",
+    "source": "https://media.api-sports.io/football/teams/735.png"
+  },
+  "Slavia Praha": {
+    "asset": "/clubs/api-team-560.png",
+    "provider_id": 560,
+    "provider_name": "Slavia Praha",
+    "source": "https://media.api-sports.io/football/teams/560.png"
+  },
+  "Sparta Prague": {
+    "asset": "/clubs/api-team-628.png",
+    "country": "Czech-Republic",
+    "provider_id": 628,
+    "provider_name": "Sparta Praha",
+    "source": "https://media.api-sports.io/football/teams/628.png"
+  },
+  "Sporting Lisbon": {
+    "asset": "/clubs/api-team-228.png",
+    "country": "Portugal",
+    "identity_source": "https://www.uefa.com/newsfiles/UCL/2026/2048061_TS.pdf",
+    "provider_id": 228,
+    "provider_name": "Sporting CP",
+    "source": "https://media.api-sports.io/football/teams/228.png"
+  },
+  "St. Pauli": {
+    "asset": "/clubs/football-data-team-20.png",
+    "provider": "football-data",
+    "provider_id": 20,
+    "provider_name": "St. Pauli",
+    "source": "https://crests.football-data.org/20.png"
+  },
+  "Stade Rennais": {
+    "asset": "/clubs/football-data-team-529.png",
+    "provider": "football-data",
+    "provider_id": 529,
+    "provider_name": "Stade Rennais",
+    "source": "https://crests.football-data.org/529.png"
+  },
+  "Strasbourg": {
+    "asset": "/clubs/football-data-team-576.png",
+    "provider": "football-data",
+    "provider_id": 576,
+    "provider_name": "Strasbourg",
+    "source": "https://crests.football-data.org/576.png"
+  },
+  "Stuttgart": {
+    "asset": "/clubs/football-data-team-10.png",
+    "provider": "football-data",
+    "provider_id": 10,
+    "provider_name": "Stuttgart",
+    "source": "https://crests.football-data.org/10.png"
+  },
+  "Sunderland": {
+    "asset": "/clubs/football-data-team-71.png",
+    "provider": "football-data",
+    "provider_id": 71,
+    "provider_name": "Sunderland",
+    "source": "https://crests.football-data.org/71.png"
+  },
+  "Torino": {
+    "asset": "/clubs/football-data-team-586.png",
+    "provider": "football-data",
+    "provider_id": 586,
+    "provider_name": "Torino",
+    "source": "https://crests.football-data.org/586.png"
+  },
+  "Torreense": {
+    "asset": "/clubs/api-team-4799.png",
+    "country": "Portugal",
+    "provider_id": 4799,
+    "provider_name": "Torreense",
+    "source": "https://media.api-sports.io/football/teams/4799.png"
+  },
+  "Tottenham": {
+    "asset": "/clubs/football-data-team-73.png",
+    "provider": "football-data",
+    "provider_id": 73,
+    "provider_name": "Tottenham",
+    "source": "https://crests.football-data.org/73.png"
+  },
+  "Toulouse": {
+    "asset": "/clubs/football-data-team-511.png",
+    "provider": "football-data",
+    "provider_id": 511,
+    "provider_name": "Toulouse",
+    "source": "https://crests.football-data.org/511.png"
+  },
+  "Trabzonspor": {
+    "asset": "/clubs/api-team-998.png",
+    "country": "Turkey",
+    "provider_id": 998,
+    "provider_name": "Trabzonspor",
+    "source": "https://media.api-sports.io/football/teams/998.png"
+  },
+  "Troyes": {
+    "asset": "/clubs/football-data-team-531.png",
+    "provider": "football-data",
+    "provider_id": 531,
+    "provider_name": "Troyes",
+    "source": "https://crests.football-data.org/531.png"
+  },
+  "Udinese": {
+    "asset": "/clubs/football-data-team-115.png",
+    "provider": "football-data",
+    "provider_id": 115,
+    "provider_name": "Udinese",
+    "source": "https://crests.football-data.org/115.png"
+  },
+  "Union Berlin": {
+    "asset": "/clubs/football-data-team-28.png",
+    "provider": "football-data",
+    "provider_id": 28,
+    "provider_name": "Union Berlin",
+    "source": "https://crests.football-data.org/28.png"
+  },
+  "Union Saint-Gilloise": {
+    "asset": "/clubs/api-team-1393.png",
+    "country": "Belgium",
+    "provider_id": 1393,
+    "provider_name": "Union St. Gilloise",
+    "source": "https://media.api-sports.io/football/teams/1393.png"
+  },
+  "Universitatea Craiova": {
+    "asset": "/clubs/api-team-632.png",
+    "country": "Romania",
+    "provider_id": 632,
+    "provider_name": "Universitatea Craiova",
+    "source": "https://media.api-sports.io/football/teams/632.png"
+  },
+  "Valencia": {
+    "asset": "/clubs/football-data-team-95.png",
+    "provider": "football-data",
+    "provider_id": 95,
+    "provider_name": "Valencia",
+    "source": "https://crests.football-data.org/95.png"
+  },
+  "Venezia FC": {
+    "asset": "/clubs/football-data-team-454.png",
+    "provider": "football-data",
+    "provider_id": 454,
+    "provider_name": "Venezia FC",
+    "source": "https://crests.football-data.org/454.png"
+  },
+  "Verona": {
+    "asset": "/clubs/football-data-team-450.png",
+    "provider": "football-data",
+    "provider_id": 450,
+    "provider_name": "Verona",
+    "source": "https://crests.football-data.org/450.png"
+  },
+  "Viking FK": {
+    "asset": "/clubs/api-team-759.png",
+    "country": "Norway",
+    "identity_source": "https://documents.uefa.com/api/khub/documents/d1hzpC2svMe1lbSVUFeS3g/content",
+    "provider_id": 759,
+    "provider_name": "Viking",
+    "source": "https://media.api-sports.io/football/teams/759.png"
+  },
+  "Viktoria Plzeň": {
+    "asset": "/clubs/api-team-567.png",
+    "country": "Czech-Republic",
+    "provider_id": 567,
+    "provider_name": "Plzen",
+    "source": "https://media.api-sports.io/football/teams/567.png"
+  },
+  "Villarreal": {
+    "asset": "/clubs/football-data-team-94.png",
+    "provider": "football-data",
+    "provider_id": 94,
+    "provider_name": "Villarreal",
+    "source": "https://crests.football-data.org/94.png"
+  },
+  "West Ham": {
+    "asset": "/clubs/football-data-team-563.png",
+    "provider": "football-data",
+    "provider_id": 563,
+    "provider_name": "West Ham",
+    "source": "https://crests.football-data.org/563.png"
+  },
+  "Wolfsburg": {
+    "asset": "/clubs/football-data-team-11.png",
+    "provider": "football-data",
+    "provider_id": 11,
+    "provider_name": "Wolfsburg",
+    "source": "https://crests.football-data.org/11.png"
+  },
+  "Wolverhampton": {
+    "asset": "/clubs/football-data-team-76.png",
+    "provider": "football-data",
+    "provider_id": 76,
+    "provider_name": "Wolverhampton",
+    "source": "https://crests.football-data.org/76.png"
+  },
+  "ŠK Slovan Bratislava": {
+    "asset": "/clubs/api-team-656.png",
+    "country": "Slovakia",
+    "provider_id": 656,
+    "provider_name": "Slovan Bratislava",
+    "source": "https://media.api-sports.io/football/teams/656.png"
+  }
+}

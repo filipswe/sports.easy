@@ -1,4 +1,7 @@
 .env
+.env.beta
+.vercel/
+.preview/
 .venv/
 __pycache__/
 .pytest_cache/
@@ -6,6 +9,7 @@ __pycache__/
 *.pyc
 *.db
 *.db-*
+*.db.provider.lock
 node_modules/
 .next/
 test-results/

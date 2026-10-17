@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Sparkles, Bookmark, Check } from "lucide-react";
 import { api, pct, stamp } from "@/lib/api";
+import { refreshPrices } from "@/lib/prices";
 import { MatchRow, Pick, pickLabel, withMatch } from "@/lib/matchday";
 import { ErrorBox, TeamBadge, Skeletons } from "./ui";
 import { ParlayPanel } from "./parlay-panel";
@@ -41,6 +42,7 @@ type Detail = {
     input_cutoff: string;
     model_version: string;
     factors: {
+      basis?: string;
       home_rate: number;
       away_rate: number;
       first_half: { home_rate: number; away_rate: number } | null;
@@ -117,13 +119,16 @@ export function MatchDetail({ id }: { id: string }) {
     [saved, setSaved] = useState(false),
     [saveError, setSaveError] = useState("");
   const { picks } = useParlay(),
-    { user } = useApp();
+    { user, meta } = useApp();
   useEffect(() => {
     let active = true;
-    Promise.all([
-      api<MatchRow>("/matchday/" + id),
-      api<Detail>("/fixtures/" + id),
-    ])
+    (async () => {
+      if (meta?.mode === "live") await refreshPrices({ fixture_id: id });
+      return Promise.all([
+        api<MatchRow>("/matchday/" + id),
+        api<Detail>("/fixtures/" + id),
+      ]);
+    })()
       .then(([m, d]) => {
         if (active) {
           setMatch(m);
@@ -136,7 +141,7 @@ export function MatchDetail({ id }: { id: string }) {
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id, meta?.mode]);
   useEffect(() => {
     const selected = picks.find((p) => p.fixture_id === id);
     setFocus(selected || null);
@@ -156,7 +161,7 @@ export function MatchDetail({ id }: { id: string }) {
     );
   const candidate =
     [...match.markets.flatMap((m) => m.picks)]
-      .sort((a, b) => b.probability - a.probability)
+      .sort((a, b) => (b.probability ?? -1) - (a.probability ?? -1))
       .find((p) => p.market === "1x2") || match.markets[0]?.picks[0];
   const currentFocus = focus
     ? match.markets
@@ -238,7 +243,11 @@ export function MatchDetail({ id }: { id: string }) {
               <div className="insight-card">
                 <div className="overline">
                   <Sparkles size={15} />{" "}
-                  {focus ? "YOUR PICK, ANALYZED" : "THE MODEL’S VIEW"}
+                  {focus
+                    ? "YOUR PICK, ANALYZED"
+                    : detail.prediction?.factors.basis === "market"
+                      ? "THE MARKET’S VIEW"
+                      : "THE MODEL’S VIEW"}
                 </div>
                 <h2>
                   {chosen ? pickLabel(chosen) : "Awaiting enough match data"}
@@ -246,10 +255,12 @@ export function MatchDetail({ id }: { id: string }) {
                 {chosen && (
                   <>
                     <div className="insight-values">
-                      <div>
-                        <strong>{pct(chosen.probability)}</strong>
-                        <span>Estimated chance</span>
-                      </div>
+                      {chosen.probability !== null && (
+                        <div>
+                          <strong>{pct(chosen.probability)}</strong>
+                          <span>Estimated chance</span>
+                        </div>
+                      )}
                       <div>
                         <strong>{chosen.odds?.toFixed(2) || "—"}</strong>
                         <span>
@@ -258,10 +269,18 @@ export function MatchDetail({ id }: { id: string }) {
                             : "Current odds"}
                         </span>
                       </div>
-                      <div>
-                        <strong>{pct(1 - chosen.probability)}</strong>
-                        <span>Chance it loses</span>
-                      </div>
+                      {chosen.probability !== null && (
+                        <div>
+                          <strong>
+                            {pct(
+                              chosen.probability === null
+                                ? null
+                                : 1 - chosen.probability,
+                            )}
+                          </strong>
+                          <span>Chance it loses</span>
+                        </div>
+                      )}
                     </div>
                     {chosen.analysis && (
                       <section
@@ -331,7 +350,7 @@ export function MatchDetail({ id }: { id: string }) {
                       <h3>{m.name}</h3>
                       <span className="hint">
                         {match.mode === "demo" ? "Sample odds" : "Current odds"}{" "}
-                        / model chance
+                        / estimated chance
                       </span>
                     </div>
                     {m.picks.length ? (
@@ -360,9 +379,9 @@ export function MatchDetail({ id }: { id: string }) {
                 ))}
               </div>
               <p className="fine-print">
-                {match.mode === "demo" ? "Sample data. " : ""}A dash means an
-                odds quote is unavailable; you can still analyze the pick and
-                enter your own price in the parlay builder.
+                {match.mode === "demo" ? "Sample data. " : ""}A dash means there
+                is no sportsbook quote for that selection; you can analyze the
+                pick and enter your own price in the parlay builder.
               </p>
             </>
           ) : tab === "Form & stats" ? (
@@ -439,7 +458,9 @@ export function MatchDetail({ id }: { id: string }) {
               First-half estimates use a separate fit to recorded half-time
               scores. Injury and lineup information is not included.
             </p>
-            <p>Model: {detail.prediction?.model_version || "Unavailable"}</p>
+            {detail.prediction && (
+              <p>Model: {detail.prediction.model_version}</p>
+            )}
           </details>
         </div>
         <ParlayPanel />

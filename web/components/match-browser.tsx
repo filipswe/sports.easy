@@ -10,6 +10,7 @@ import {
   CalendarDays,
 } from "lucide-react";
 import { api, pct } from "@/lib/api";
+import { refreshPrices } from "@/lib/prices";
 import { MatchRow, Pick, pickKey, pickLabel, withMatch } from "@/lib/matchday";
 import { useParlay } from "./parlay-context";
 import { useApp } from "./shell";
@@ -27,23 +28,26 @@ export function OutcomeButton({
   const label =
     short && pick.market === "1x2"
       ? { home: "1", draw: "X", away: "2" }[pick.outcome] || pick.outcome
-      : short && ["totals", "btts"].includes(pick.market)
-        ? { over: "Over", under: "Under", yes: "Yes", no: "No" }[
+      : short && (pick.market.startsWith("totals") || pick.market === "btts")
+        ? ({ over: "Over", under: "Under", yes: "Yes", no: "No" }[
             pick.outcome
-          ] || pick.outcome
+          ] || pick.outcome) +
+          (pick.market.startsWith("totals")
+            ? ` ${pick.market === "totals" ? "2.5" : pick.market.split("_")[1]}`
+            : "")
         : pickLabel(pick);
   return (
     <button
       className={`outcome ${selected ? "is-selected" : ""}`}
       onClick={() => toggle(pick)}
       aria-pressed={selected}
-      aria-label={`${pickLabel(pick)}, ${pct(pick.probability)} model chance${pick.odds ? `, odds ${pick.odds.toFixed(2)}` : ""}`}
+      aria-label={`${pickLabel(pick)}${pick.probability !== null ? `, ${pct(pick.probability)} estimated chance` : ""}${pick.odds ? `, odds ${pick.odds.toFixed(2)}` : ""}`}
     >
       <span>
         {selected && <Check size={12} />} {label}
       </span>
       <b>{pick.odds?.toFixed(2) || "—"}</b>
-      <small>{pct(pick.probability)}</small>
+      {pick.probability !== null && <small>{pct(pick.probability)}</small>}
     </button>
   );
 }
@@ -54,10 +58,42 @@ export function MatchBrowser() {
   const period = params.get("period") || "week",
     search = params.get("team") || "",
     market = params.get("market") || "1x2",
+    goalLine = params.get("line") || "all",
+    halfLine = params.get("half_line") || "all",
     league = params.get("league") || "";
   const [input, setInput] = useState(search),
     [matches, setMatches] = useState<MatchRow[] | null>(null),
     [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
+  const selectedMarket = market.startsWith("half_totals")
+    ? `half_totals_${halfLine}`
+    : market === "totals" && goalLine !== "2.5"
+      ? `totals_${goalLine}`
+      : market;
+  const [loadingMore, setLoadingMore] = useState(false);
+  async function loadMore() {
+    setLoadingMore(true);
+    try {
+      await refreshPrices({ period, team: search, league, more: true });
+      const result = await api<{ items: MatchRow[] }>(
+        "/matchday?" +
+          new URLSearchParams({
+            period,
+            team: search,
+            league,
+            market: selectedMarket,
+          }),
+      );
+      setMatches(result.items);
+      setError("");
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Unable to load prices. Try again.",
+      );
+    } finally {
+      setLoadingMore(false);
+    }
+  }
   function update(key: string, value: string) {
     const q = new URLSearchParams(params);
     if (value) q.set(key, value);
@@ -71,19 +107,45 @@ export function MatchBrowser() {
     let active = true;
     setError("");
     setMatches(null);
-    api<{ items: MatchRow[] }>(
-      "/matchday?" + new URLSearchParams({ period, team: search, league }),
-    )
-      .then((r) => {
-        if (active) setMatches(r.items);
-      })
-      .catch((e) => {
-        if (active) setError(e.message);
-      });
+    const load = async (refresh = true) => {
+      if (refresh && meta?.mode === "live" && market !== "1x2") {
+        await refreshPrices({ period, team: search, league });
+      }
+      return api<{ items: MatchRow[] }>(
+        "/matchday?" +
+          new URLSearchParams({
+            period,
+            team: search,
+            league,
+            market: selectedMarket,
+          }),
+      );
+    };
+    const fetchMatches = (refresh: boolean) =>
+      load(refresh)
+        .then((r) => {
+          if (active) {
+            setMatches(r.items);
+            setError("");
+          }
+        })
+        .catch((e) => {
+          if (active)
+            setError(
+              e instanceof TypeError
+                ? "Connection interrupted. Please try again."
+                : e.message,
+            );
+        });
+    fetchMatches(true);
+    const interval = window.setInterval(() => {
+      if (!document.hidden) fetchMatches(false);
+    }, 60000);
     return () => {
       active = false;
+      window.clearInterval(interval);
     };
-  }, [period, search, league]);
+  }, [period, search, league, market, selectedMarket, meta?.mode, retry]);
   const list = matches
     ? [...matches].sort((a, b) => Date.parse(a.kickoff) - Date.parse(b.kickoff))
     : [];
@@ -140,6 +202,7 @@ export function MatchBrowser() {
                 ["today", "Today"],
                 ["tomorrow", "Tomorrow"],
                 ["week", "Next 7 days"],
+                ["fortnight", "Next 14 days"],
               ].map(([v, l]) => (
                 <button
                   key={v}
@@ -159,12 +222,18 @@ export function MatchBrowser() {
             {[
               ["1x2", "1X2"],
               ["btts", "BTTS"],
-              ["totals", "Over/under 2.5"],
+              ["totals", "Under/over goals"],
               ["half_totals_0.5", "First-half goals"],
               ["double_chance", "Double chance"],
             ].map(([v, l]) => (
               <button
-                className={market === v ? "active" : ""}
+                className={
+                  market === v ||
+                  (v.startsWith("half_totals") &&
+                    market.startsWith("half_totals"))
+                    ? "active"
+                    : ""
+                }
                 key={v}
                 onClick={() => update("market", v)}
               >
@@ -172,6 +241,29 @@ export function MatchBrowser() {
               </button>
             ))}
           </div>
+          {(market === "totals" || market.startsWith("half_totals")) && (
+            <label className="goal-line-control">
+              Goal line
+              <select
+                value={market === "totals" ? goalLine : halfLine}
+                onChange={(e) =>
+                  update(
+                    market === "totals" ? "line" : "half_line",
+                    e.target.value,
+                  )
+                }
+              >
+                <option value="all">All goal lines</option>
+                {Array.from({ length: 10 }, (_, n) => `${n + 0.5}`).map(
+                  (line) => (
+                    <option key={line} value={line}>
+                      {line} goals
+                    </option>
+                  ),
+                )}
+              </select>
+            </label>
+          )}
           <div className="list-caption">
             <span>
               {matches
@@ -179,28 +271,58 @@ export function MatchBrowser() {
                 : "Loading matches…"}
             </span>
             <span>
-              {meta?.mode === "demo" ? "Sample odds" : "Current odds"} · Model
-              chance %
+              {meta?.mode === "demo" ? "Sample odds" : "Current odds"} ·
+              Estimated chance %
             </span>
           </div>
           {error ? (
-            <ErrorBox message={error} />
+            <ErrorBox
+              message={error}
+              retry={() => setRetry((attempt) => attempt + 1)}
+            />
           ) : !matches ? (
             <Skeletons />
           ) : !list.length ? (
-            <Empty title="No matches found">
+            <Empty
+              title={
+                meta?.mode === "live" && market !== "1x2"
+                  ? "No quoted matches for this market"
+                  : "No matches found"
+              }
+            >
               <button
                 className="text-button"
                 onClick={() => router.replace("/predictions")}
               >
                 Reset filters
               </button>{" "}
-              or try another date.
+              or try another goal line, market or date.
             </Empty>
           ) : (
             <div className="match-list">
               {list.map((m, i) => {
-                const group = m.markets.find((g) => g.key === market),
+                const groups = m.markets
+                    .filter((g) =>
+                      selectedMarket === "totals_all"
+                        ? g.key === "totals" || g.key.startsWith("totals_")
+                        : selectedMarket === "half_totals_all"
+                          ? g.key.startsWith("half_totals_")
+                          : g.key === selectedMarket,
+                    )
+                    .sort((a, b) =>
+                      selectedMarket.endsWith("_all")
+                        ? Number(
+                            a.key === "totals"
+                              ? "2.5"
+                              : a.key.split("_").at(-1),
+                          ) -
+                          Number(
+                            b.key === "totals"
+                              ? "2.5"
+                              : b.key.split("_").at(-1),
+                          )
+                        : 0,
+                    ),
                   day = new Date(m.kickoff).toLocaleDateString("en-GB", {
                     weekday: "short",
                     day: "numeric",
@@ -238,17 +360,25 @@ export function MatchBrowser() {
                           <strong>{m.away}</strong>
                         </span>
                       </Link>
-                      <div className="fixture-outcomes">
-                        {group?.picks.length ? (
-                          group.picks.map((p) => (
-                            <OutcomeButton
-                              key={p.outcome}
-                              pick={withMatch(p, m)}
-                              short
-                            />
+                      <div
+                        className={`fixture-outcomes ${selectedMarket.endsWith("_all") ? "all-goal-lines" : ""}`}
+                      >
+                        {groups.length ? (
+                          groups.map((group) => (
+                            <div className="fixture-line" key={group.key}>
+                              {group.picks.map((p) => (
+                                <OutcomeButton
+                                  key={p.outcome}
+                                  pick={withMatch(p, m)}
+                                  short
+                                />
+                              ))}
+                            </div>
                           ))
                         ) : (
-                          <span className="hint">Awaiting match data</span>
+                          <span className="hint">
+                            No sportsbook quote for this market
+                          </span>
                         )}
                       </div>
                       <Link
@@ -268,9 +398,19 @@ export function MatchBrowser() {
             {meta?.mode === "demo"
               ? "Sample odds from Demo Sportsbook."
               : "Prices from the connected sportsbook."}{" "}
-            A dash means no price is available. Tap a team for form, stats and
-            all markets.
+            Tap a team for form, stats and all markets.
           </p>
+          {meta?.mode === "live" && market !== "1x2" && (
+            <button
+              className="button secondary"
+              onClick={loadMore}
+              disabled={!matches || loadingMore}
+            >
+              {loadingMore
+                ? "Finding current prices…"
+                : "Find more priced matches"}
+            </button>
+          )}
         </div>
         <ParlayPanel />
       </div>

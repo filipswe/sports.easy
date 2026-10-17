@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 
 from .config import settings
 from .db import now, utc
-from .leagues import BY_ID, BY_SPORT, LEAGUES
+from .leagues import BY_ID, BY_SPORT, EUROPEAN_COMPETITIONS, LEAGUES
 from .models import IngestionRun
 
 
@@ -297,7 +297,7 @@ class TheOddsAPI:
         if not settings.odds_api_key:
             raise ProviderUnavailable("ODDS_API_KEY is missing; live quotes unavailable")
         events = []
-        for league in LEAGUES:
+        for league in LEAGUES + EUROPEAN_COMPETITIONS:
             events.extend(
                 self.client.get(
                     f"https://api.the-odds-api.com/v4/sports/{league.sport}/odds",
@@ -308,10 +308,38 @@ class TheOddsAPI:
                         "markets": "h2h,totals",
                         "oddsFormat": "decimal",
                         "dateFormat": "iso",
+                        **(
+                            {
+                                "commenceTimeFrom": now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                "commenceTimeTo": (now() + timedelta(days=14)).strftime(
+                                    "%Y-%m-%dT%H:%M:%SZ"
+                                ),
+                            }
+                            if league in EUROPEAN_COMPETITIONS
+                            else {}
+                        ),
                     },
                     cost=2,
                 )
             )
+        return events
+
+    def european_events(self):
+        # /events is free of odds credits, with its own bounded request ledger.
+        if not settings.odds_api_key:
+            raise ProviderUnavailable("ODDS_API_KEY is missing; European fixtures unavailable")
+        client = ProviderClient(
+            self.client.db, "the-odds-api-events", settings.odds_event_daily_budget
+        )
+        events = []
+        for league in EUROPEAN_COMPETITIONS:
+            data = client.get(
+                f"https://api.the-odds-api.com/v4/sports/{league.sport}/events",
+                {"apiKey": settings.odds_api_key, "dateFormat": "iso"},
+            )
+            if not isinstance(data, list):
+                raise ProviderUnavailable("Invalid European fixture response")
+            events.extend(data)
         return events
 
 
@@ -445,6 +473,48 @@ class DemoOdds:
                         ],
                     }
                 )
+                if name == "Demo Sportsbook" and i % 276 in {264, 265, 266}:
+                    # A bounded sample of expanded prices, independent of model probabilities.
+                    books[-1]["markets"].extend(
+                        [
+                            {
+                                "key": "alternate_totals",
+                                "outcomes": [
+                                    {"name": side, "point": line, "price": prices[index]}
+                                    for line, prices in [
+                                        (0.5, (1.12, 7.2)),
+                                        (1.5, (1.38, 2.95)),
+                                        (3.5, (2.6, 1.49)),
+                                        (4.5, (4.4, 1.2)),
+                                    ]
+                                    for index, side in enumerate(("Over", "Under"))
+                                ],
+                            },
+                            {
+                                "key": "alternate_totals_h1",
+                                "outcomes": [
+                                    {"name": side, "point": line, "price": prices[index]}
+                                    for line, prices in [
+                                        (0.5, (1.42, 2.9)),
+                                        (1.5, (2.85, 1.45)),
+                                        (2.5, (5.1, 1.16)),
+                                    ]
+                                    for index, side in enumerate(("Over", "Under"))
+                                ],
+                            },
+                            {
+                                "key": "double_chance",
+                                "outcomes": [
+                                    {"name": f["home"]["name"] + " or Draw", "price": 1.36},
+                                    {"name": f["away"]["name"] + " or Draw", "price": 1.67},
+                                    {
+                                        "name": f["home"]["name"] + " or " + f["away"]["name"],
+                                        "price": 1.29,
+                                    },
+                                ],
+                            },
+                        ]
+                    )
             events.append(
                 {
                     "id": f["id"],

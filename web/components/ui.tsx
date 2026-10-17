@@ -68,22 +68,33 @@ export function TeamBadge({
   away?: boolean;
   src?: string | null;
 }) {
-  const [failed, setFailed] = useState(false);
   const local = (clubCrests as Record<string, string>)[name];
+  const sources = [
+    ...new Set([local, src].filter((value): value is string => !!value)),
+  ];
   return (
     <span className={`team-badge ${away ? "away" : ""}`}>
-      {!failed && (src || local) ? (
-        <img
-          src={src || local}
-          alt={`${name} crest`}
-          width={36}
-          height={36}
-          onError={() => setFailed(true)}
-        />
-      ) : (
-        <span aria-label={name}>{initials(name)}</span>
-      )}
+      <TeamImage
+        key={`${name}:${sources.join("|")}`}
+        name={name}
+        sources={sources}
+      />
     </span>
+  );
+}
+function TeamImage({ name, sources }: { name: string; sources: string[] }) {
+  const [attempt, setAttempt] = useState(0);
+  const source = sources[attempt];
+  return source ? (
+    <img
+      src={source}
+      alt={`${name} crest`}
+      width={36}
+      height={36}
+      onError={() => setAttempt(attempt + 1)}
+    />
+  ) : (
+    <span aria-label={name}>{initials(name)}</span>
   );
 }
 export function AddPick({
@@ -201,7 +212,7 @@ export function PredictionCard({
       </div>
       <div className="probability">
         <div>
-          <span>Model chance</span>
+          <span>{s.probability_basis || "Model chance"}</span>
           <strong>{pct(s.probability)}</strong>
         </div>
         <div className="probability-track">

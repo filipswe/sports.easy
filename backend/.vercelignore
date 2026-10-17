@@ -1,0 +1,8 @@
+.env*
+*.db
+*.db-*
+*.provider.lock
+tests/
+__pycache__/
+.pytest_cache/
+.venv/

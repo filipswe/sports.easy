@@ -1,6 +1,7 @@
 import hashlib
 import secrets
 import smtplib
+import ssl
 from datetime import timedelta
 from email.message import EmailMessage
 
@@ -77,7 +78,7 @@ def issue_token(db, user, purpose):
         try:
             with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as server:
                 if settings.smtp_starttls:
-                    server.starttls()
+                    server.starttls(context=ssl.create_default_context())
                 if settings.smtp_user:
                     server.login(settings.smtp_user, settings.smtp_password)
                 server.send_message(message)

@@ -1,5 +1,7 @@
 # Verification report
 
+Latest feature-branch preview: **http://127.0.0.1:3101**. The existing Docker app on port 3000 is unchanged by this milestone. See the final section for current validation; earlier sections record prior releases.
+
 Local verification on 13 October 2026, after the matchday redesign. Provider credentials have not been supplied; the running local app uses explicitly labelled sample fixtures and odds.
 
 ## Completed checks
@@ -38,3 +40,37 @@ The running local PostgreSQL/Docker app uses football-data.org Free fixtures/res
 The homepage displays five recommendations in a 24-hour window, ordered by kickoff. Stronger picks arriving through new coverage can enter the shortlist; earlier official records retain their original price and probability in Performance. Daily-feed suggestions can use a snapshot fetched within 24 hours, always retaining its source update time and outdated-price label. Current-value filters still reject stale quotes.
 
 Final checks: 85 backend tests and five Chromium end-to-end tests passed; Ruff, web lint/typecheck and production Docker builds passed. Live-browser checks verified ten loaded featured club crests, 48 chronological matches, five league choices, real-price parlay analysis, real recent form, separately fitted first-half estimates and mobile layouts without overflow or runtime errors. The additive crest migration preserved existing accounts and sample records. Today's worker reserved ten odds units and did not repeat the bootstrap sweep. Provider keys were absent from UI responses and tracked files.
+
+## Expanded markets and natural-language analyst — 14 October 2026
+
+On `feat/production-readiness`, the additional-market implementation and crest coverage are committed in `4d12e9e` and `b88c96c`. The latest local suite passes 121 backend tests and seven Chromium workflows, Ruff, ESLint, TypeScript and the production web build. The affected 12 natural-language chat tests were rerun after correcting AI focus classification. The original milestone had two dedicated review rounds; these requested corrections were self-reviewed for source identity, price calculations, quota/cache behavior, half-time settlement, bounded chat input and secrets.
+
+Actual isolated live verification: 141 priced fixtures within 14 days; all 184 team images on the seven-day match list loaded successfully, with no missing model-percentage labels. A six-event Pinnacle detail refresh returned six BTTS/double-chance matches, five first-half 1.5 matches, six full-time 3.5 matches, and offered 1.5/4.5 lines. Chromium verified working selections, line-specific prices and mobile width of 390 without overflow or runtime errors. Groq recognized Feyenoord vs Como from a free-form question and returned its actual over-3.5 quote. Unknown or unquoted selections are never given fabricated prices.
+
+The free quota cannot populate every alternate line for every event. Missing European history still suppresses model estimates. The public launch requirements in `production-readiness.md` remain open; this milestone does not merge or deploy. Restart the isolated preview with `.venv/bin/python scripts/preview.py --live --ai`.
+
+## Soonest matchday and continuous preview — 14 October 2026
+
+Commit `7062bce` passes all six GitHub push/PR checks, including the 128-case backend suite, PostgreSQL smoke/audit and browser/build checks. The final UI also passes all seven local Chromium workflows, lint, types and production build. Affected European-result/cache tests were rerun after rejecting null timestamps and allowing newly eligible later kickoffs to refresh without waiting for the earlier group cache.
+
+Live preview verification selected five Champions League picks for 14 October, ordered by kickoff, ahead of the later domestic weekend. Those forecasts are explicitly labelled market-based where verified history is missing. All-goal-line API returned every quoted full-time line in the current window (including 1.5, 2.5, 3.5 and 4.5 where offered). The preview now runs an isolated worker and the supported Next standalone production server; its production UI contains the Dark Reader lock tag.
+
+These corrections were self-reviewed, with targeted source identity, complete-market normalization, immutable-record, timezone, null-response, quota/cache and settlement-correction checks. The preceding milestone had already used its two dedicated reviewer rounds. European automatic settlements require the reviewed league-phase dates; extra-time-ambiguous scores and missed results beyond the provider's three-day history stay pending. No merge or deployment was performed.
+
+The subsequent connection-recovery correction clears stale error messages after a successful cached refresh on All matches, Home and Performance, and adds **Try again** to All matches. An eighth Chromium regression deliberately interrupts the initial request and a later refresh, then verifies manual retry and automatic recovery. It passed locally alongside lint, type checks and a rebuilt production preview. The live production browser recovered from a deliberately interrupted request and loaded 92 priced matches with no page exceptions. All six GitHub checks passed on `b343dc5` before this follow-up.
+
+GitHub's parallel push run exposed a startup race in that new regression while the PR browser run passed. The test now loads the application metadata before navigating to the interrupted match list, keeping the Retry assertion independent of bootstrap refreshes. Three consecutive local repetitions passed, and lint/types passed again; application behavior is unchanged by this test-only stabilization.
+
+The backend run later exposed another time-dependent test setup: adding an hour to a late fixture could move the stronger candidate into the next local calendar day. That regression now uses the earliest matchday kickoff. Backend/browser assertions permit fewer than five eligible picks while retaining the five-pick cap, ranking, chronology and immutable performance checks. All 18 affected backend tests and all eight Chromium workflows passed locally, alongside Ruff lint/format, ESLint and TypeScript. These changes only stabilize tests; the production preview's application build is unchanged.
+
+## Vercel Hobby beta preparation — 14 October 2026
+
+The user selected a free non-commercial beta and created Vercel/Neon accounts. Both application projects target Frankfurt; only PostgreSQL is needed in Neon. The user's verified-empty Neon PostgreSQL 18.6 database was migrated to `007_observations` (22 tables), and a separate restricted application role was created. It can perform application counter CRUD but cannot create schema objects or update the migration revision. Owner and application credentials remain only in ignored private `.env.beta`; no application has been published.
+
+The API now uses database-backed production request budgets, no idle connection pool on Vercel, normalized hosted PostgreSQL URIs and a bounded one-shot refresh command. The opt-in hourly GitHub worker remains disabled. Vercel website configuration rejects missing/unsafe backend origins. SMTP verifies server certificates before authentication, and public configuration requires TLS. These follow-up changes were self-reviewed; hosted peer/client-IP behavior remains an explicit validation requirement.
+
+Validation: the full 138-case backend suite passed before the final malformed-origin/SMTP safeguards; 32 affected configuration/account/email cases passed after those safeguards. All eight Chromium workflows, Ruff lint/format, ESLint, TypeScript and the production preview build passed. Six invalid Vercel origin configurations were rejected, while public HTTPS and native development were accepted. Configured-secret scans found no matches in milestone files.
+
+A private backup of the actual empty Neon schema restored into a temporary local PostgreSQL 18 database with the same revision, 22 tables and zero fixtures. Synthetic data was then seeded only in that disposable database; migration, immutability, advisory-lock, duplicate-job and concurrent chat/request-budget checks passed. The temporary container was removed. This proves the initial schema restore, not a future production account/data restore. Public launch still requires the canonical Vercel origin, operator identity, Gmail authentication/delivery tests, rights review and hosted validation described in `vercel-beta.md`.
+
+GitHub's generic secret rule misread the blank example `ODDS_API_KEY` as the following `ODDS_REGION` field. All credential placeholders in that historical template were verified empty. New blanks are quoted, and `.gitleaksignore` excludes only that exact historical commit/file/rule/line fingerprint; real credential scans remain enabled.

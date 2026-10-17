@@ -128,6 +128,21 @@ class Publication(Identity, Base):
     __table_args__ = (UniqueConstraint("prediction_id", "quote_id"),)
 
 
+class QuoteObservation(Identity, Base):
+    __tablename__ = "quote_observations"
+    quote_id: Mapped[str] = mapped_column(ForeignKey("quotes.id"), index=True)
+    observed_at: Mapped[object] = mapped_column(DateTime(timezone=True), default=now)
+    fixture_kickoff: Mapped[object] = mapped_column(DateTime(timezone=True))
+    __table_args__ = (UniqueConstraint("quote_id", "observed_at"),)
+
+
+class UsageCounter(Base):
+    __tablename__ = "usage_counters"
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    count: Mapped[int] = mapped_column(Integer, default=0)
+    expires_at: Mapped[object] = mapped_column(DateTime(timezone=True), index=True)
+
+
 class Settlement(Identity, Base):
     __tablename__ = "settlements"
     publication_id: Mapped[str] = mapped_column(ForeignKey("publications.id"), index=True)
@@ -212,7 +227,15 @@ class AdminAudit(Identity, Base):
 
 
 # In addition to application policy, PostgreSQL migration installs immutable-table triggers.
-for immutable in (Prediction, Quote, Publication, Settlement, EvaluationRun, Recommendation):
+for immutable in (
+    Prediction,
+    Quote,
+    QuoteObservation,
+    Publication,
+    Settlement,
+    EvaluationRun,
+    Recommendation,
+):
 
     @event.listens_for(immutable, "before_update")
     @event.listens_for(immutable, "before_delete")

@@ -39,9 +39,46 @@ def value(p, odds):
     }
 
 
+def market_probabilities(prediction, market):
+    if market in prediction.probabilities:
+        return prediction.probabilities[market]
+    if market == "double_chance":
+        p = prediction.probabilities["1x2"]
+        return {
+            "1x": p["home"] + p["draw"],
+            "x2": p["away"] + p["draw"],
+            "12": p["home"] + p["away"],
+        }
+    if prediction.factors.get("basis") == "market":
+        return {}
+    if market.startswith(("totals_", "half_totals_")):
+        try:
+            line = float(market.rsplit("_", 1)[1])
+        except ValueError:
+            return {}
+        if line not in {n + 0.5 for n in range(10)}:
+            return {}
+        factors = (
+            prediction.factors.get("first_half")
+            if market.startswith("half_")
+            else prediction.factors
+        )
+        if not factors:
+            return {}
+        rate = factors["home_rate"] + factors["away_rate"]
+        under = sum(
+            math.exp(-rate) * rate**n / math.factorial(n) for n in range(math.floor(line) + 1)
+        )
+        return {"over": 1 - under, "under": under}
+    return {}
+
+
 def no_vig(quotes, market):
     """Only a complete, single bookmaker/snapshot/fixture/market is admissible."""
-    if len(quotes) != len(MARKETS[market]) or {q.outcome for q in quotes} != set(MARKETS[market]):
+    outcomes = MARKETS.get(
+        market, ["over", "under"] if market.startswith(("totals_", "half_totals_")) else []
+    )
+    if not outcomes or len(quotes) != len(outcomes) or {q.outcome for q in quotes} != set(outcomes):
         return None
     if len({(q.bookmaker_id, q.fixture_id, q.snapshot_key, q.market) for q in quotes}) != 1:
         return None
@@ -194,6 +231,11 @@ def predict(fixtures, home, away, cutoff, first_half=False, strength_cache=None)
 
 
 def outcome_won(market, outcome, h, a):
+    if market == "double_chance":
+        return {"1x": h >= a, "x2": a >= h, "12": h != a}[outcome]
+    if market.startswith(("totals_", "half_totals_")):
+        line = float(market.rsplit("_", 1)[1])
+        return (h + a > line) if outcome == "over" else (h + a < line)
     actual = {
         "1x2": "home" if h > a else "away" if a > h else "draw",
         "totals": "over" if h + a > 2 else "under",

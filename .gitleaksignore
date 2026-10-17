@@ -1,0 +1,3 @@
+# Historical false positive: blank ODDS_API_KEY consumed the following ODDS_REGION field.
+# Empty example values are quoted in subsequent commits. No real secret is excluded.
+be5007d9e5218d4c5c2cee27ac57037a3697fb82:.env.beta.example:generic-api-key:13

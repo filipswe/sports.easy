@@ -2,23 +2,42 @@
 
 **Betting made easy.** A football match centre with a bright interface, recommended picks, match analysis and a parlay builder.
 
-New installations start with labelled sample data. The [free live setup](docs/live-setup.md) combines football-data.org fixtures/results with Pinnacle prices from The Odds API. The public interface labels these **Current odds**; the free feed refreshes daily and price-age checks remain on the server. Probabilities are model estimates, and no profitable track record is claimed.
+New installations start with labelled sample data. The [free live setup](docs/live-setup.md) combines football-data.org fixtures/results with Pinnacle prices from The Odds API. The public interface labels these **Current odds**; fixtures/results refresh every four hours, odds refresh every three days, and price-age checks remain on the server. Probabilities are model estimates, and no profitable track record is claimed.
 
 ## What works
 
 - Light responsive Home, All matches, match analysis, Parlays, Performance and How it works pages, with club crests and simple navigation.
-- Up to five model-selected recommendations across Premier League, La Liga, Serie A, Bundesliga and Ligue 1, chosen within the next 24-hour matchday window and displayed by kickoff. Performance follows these exact picks and their original odds, including losses and settlement corrections.
-- Upcoming fixtures, team search, dates and league filters; match stats, last-five form, previous meetings, and specific reasons for the model's view of every chosen outcome. All matches remain in kickoff order.
-- Model estimates for 1X2, BTTS, several goal lines, first-half goals when history supports them, double chance, team goals and correct scores. Quotes are shown only when available; currently priced sample markets are 1X2, BTTS and totals 2.5.
+- Up to five recommendations for the soonest Europe/Belgrade calendar matchday across European competitions and the top five leagues, displayed by kickoff. European games without history use a labelled market-based estimate from complete real 1X2 prices. Performance follows these exact picks and their original odds, including losses and settlement corrections.
+- Priced upcoming fixtures only in live mode, plus Champions League, Europa League and Conference League within 14 days; team search, dates and league filters; match stats, last-five form, previous meetings, and specific reasons for the model's view of every chosen outcome. All matches remain in kickoff order.
+- Model estimates for 1X2, BTTS, several goal lines, first-half goals when history supports them, double chance, team goals and correct scores. Quotes are shown only when available; live Pinnacle detail quotes support BTTS, double chance, full-time and first-half half-goal lines (0.5–9.5 where quoted). Sample detail prices remain clearly labelled.
 - Custom parlays, model suggestions within combined-odds ranges, combined probability and odds, user-entered prices and browser saves. One selection per match; repeated clubs are excluded.
 - One configured sportsbook source (`ODDS_BOOKMAKER_KEY=pinnacle` for live ingestion). No bookmaker comparison UI. Missing prices are shown as a dash.
 - FastAPI/SQLAlchemy persistence, PostgreSQL Docker deployment, Alembic migrations and a native SQLite development option.
 - Accounts, verified registration, password resets, preferences and authenticated saved picks. Append-only model, quote, official recommendation and settlement records.
-- Provider adapters, quotas, retry/backoff and a worker with PostgreSQL advisory locking.
+- Homepage match analyst with optional Groq AI evidence selection and labelled data-backed answers.
+- Provider adapters, quotas, retry/backoff, independent odds cadence and a worker with PostgreSQL advisory locking.
 
 See [product details and coverage](docs/product-update.md) for current market, data and storage limits.
 
+Club logos are cached for all 171 teams inventoried in the live beta on 14 October 2026, with seven additional reviewed clubs added on 17 October; every one of the 180 team records in the current local live cache resolves to a reviewed crest. Every shared badge tries the reviewed local image, then its supplied provider image, then the club's initials. Newly added teams can use provider images immediately; see the [crest catalog and source notes](web/public/clubs/README.md) before adding more cached assets.
+
+This is a personal portfolio project. The [portfolio roadmap and learning guide](docs/portfolio-guide.md) distinguishes remaining work from optional expansion and walks through the actual technologies and request flow.
+
+Use the [resume-readiness checklist](docs/resume-readiness.md) to prepare a reproducible demonstration and accurate project description. It includes the latest verified official-pick results and separates required demo fixes from optional expansion.
+
+## Portfolio demonstration
+
+See the [screenshots and short walkthrough](docs/demo/README.md), [architecture diagram](docs/architecture.md) and [validation record](docs/resume-ready-verification.md). The recording uses real cached data in an isolated local preview; permanent Vercel deployments may run an older revision. Hosted data refresh is manual for this personal project. Provider-key rotation remains an owner action before presenting the hosted demo as finished.
+
+For a fresh clone, the Docker Compose quick start below is the default setup with clearly labelled sample data and no provider accounts. Never overwrite an existing private `.env` while following fresh-clone instructions.
+
+## Isolated milestone preview
+
+From this checkout, run `.venv/bin/python scripts/preview.py` and open **http://127.0.0.1:3101**. Add `--live --ai` to use the ignored provider/Groq credentials with a separate cached database under ignored `.preview/`. The preview starts a production UI and isolated worker for updates/settlements; add `--dev` for hot reload. Live restarts reuse recent data; sample previews use a new temporary database. Keep the terminal running while browsing; Ctrl+C stops the preview. Your existing Docker services and data remain untouched. See [production candidate, configuration and launch requirements](docs/production-readiness.md) for exact limitations and remaining launch work. [Milestone validation results](docs/milestone-verification.md) record the checks and independent review.
+
 ## Quick start: Docker Compose
+
+For the planned free non-commercial cloud beta, use the [Vercel/Neon setup](docs/vercel-beta.md). It keeps local databases separate, uses private `.env.beta` configuration and requires hosting/email/owner settings before deployment. Run `.venv/bin/python scripts/check_beta.py` to see missing settings without printing credentials or connecting to services.
 
 Prerequisites: Docker Desktop/Engine with Compose. No provider accounts are needed for demo mode.
 
@@ -92,8 +111,8 @@ The browser talks only to `/api` on the web origin; Next proxies it to FastAPI. 
 ## Try the complete flow
 
 1. Open Home and browse **Our recommended picks**. The status bar identifies sample data while providers are disconnected.
-2. Open **All matches**, search for a team and select a date or market. Tap an outcome to add it to your parlay.
-3. Open a match for the model's view, all supported markets, form, stats and previous meetings. Choosing another outcome updates its analysis.
+2. Open **All matches**, search for a team and select a date or market. Choose **Under/over goals** or **First-half goals**, then select a goal line for its corresponding prices. Live views hide unpriced selections. Tap an outcome to add it to your parlay.
+3. Open a match for the model's view, quoted markets, form, stats and previous meetings. Choosing another outcome updates its analysis. On the homepage, ask a question such as “What are the odds for Arsenal’s next game?”; no match selector is required. Follow-up questions remember the last identified game.
 4. Open **Parlays**, review your selections, enter your own decimal odds if needed, or ask for model suggestions within a combined-odds range. Save and reopen a parlay on this browser.
 5. Create and verify a test account to save individual picks. Local email mode provides a verification link. Saved picks keep their original publication and price.
 6. Visit **Performance** to follow only the official recommended picks. Pending records are excluded from wins and simulated returns.
@@ -105,8 +124,8 @@ Demo prices age normally and become stale after ten minutes. Stale prices are br
 From the repository root:
 
 ```sh
-.venv/bin/ruff check backend
-.venv/bin/ruff format --check backend
+.venv/bin/ruff check backend scripts
+.venv/bin/ruff format --check backend scripts
 .venv/bin/pytest -q
 npm run lint --prefix web
 npm run typecheck --prefix web
@@ -145,19 +164,29 @@ Checks database-level immutability, persisted seed, advisory lock exclusivity an
 
 The admin command requires an existing verified account and records an audit event. `/admin` exposes sanitized ingestion state; no credentials are shown. Ingestion/evaluation commands are private operator actions, not public HTTP routes. Do not run manual ingestion concurrently with the worker.
 
+For the personal cloud demonstration, use one manual operator process from the repository root:
+
+```sh
+.venv/bin/python scripts/run_beta.py readiness
+.venv/bin/python scripts/run_beta.py refresh
+```
+
+This loads ignored `.env.beta`, excludes the database-owner credential, validates settings, uses the existing lock/cadence/quota safeguards, and stops after 20 minutes. It never migrates the database. The optional GitHub schedule stays disabled for this manual setup. If an earlier long ingestion discarded prices, run `.venv/bin/python scripts/run_beta.py refresh-prices` once: it retrieves a bounded real-price sweep at its receipt time without refitting history. This explicit recovery normally costs 16 odds credits; it still honors configured budgets and does not fabricate or backdate quotes. Do not repeat it on every page visit.
+
 ## Live credentials and limitations
 
 Follow the [live signup and activation steps](docs/live-setup.md) to connect actual bookmaker prices.
 
-Read [provider capability, cost and rights notes](docs/providers.md) before enabling live mode. You need API-Football and The Odds API credentials/entitlements, a selected region, reviewed display/retention rights, SMTP, HTTPS and a real deployment secret. No credentials are bundled, and live mode never substitutes synthetic data. The adapters have not been tested against paid accounts in this session.
+Read [provider capability, cost and rights notes](docs/providers.md) before enabling live mode. Use the free football-data.org fixture credential (or an entitled API-Football account) and The Odds API credential, a selected region, reviewed display/retention rights, SMTP, HTTPS and a real deployment secret. No credentials are bundled, and live mode never substitutes synthetic data. The adapters have not been tested against paid accounts in this session.
 
-Deliberately deferred: LLM commentary (deterministic explanations work), calibrated probabilities, archival historical odds ingestion, real validated performance, additional leagues beyond the top five, expanded live-market prices, injuries/lineups/xG/standings feeds and payment/betting operations. Dedicated model-input version storage, SQL-based large-archive ranking, shared rate limiting and production observability integration need further work before scale. This MVP uses compact season/market/stat representations instead of building unnecessary unused tables. See the [architecture and actual controls](docs/architecture.md), [model methodology](docs/methodology.md), [deployment/rollback guide](docs/deployment.md) and [verification report](docs/verification.md).
+Remaining limits: uncalibrated probabilities, no archival historical odds ingestion or proven real predictive performance, European estimates based on prices where verified history is absent, event-dependent market availability within the free quota, injuries/lineups/xG/standings feeds and payment/betting operations. Chat recognizes the match, requested market and follow-up context from free-form questions, then explains verified facts. Questions are not stored on the server. Dedicated model-input version storage, SQL-based large-archive ranking, trusted hosted proxy/client identity and production observability integration need further work before scale. Production request limits now use shared database counters. This MVP uses compact season/market/stat representations instead of building unnecessary unused tables. See the [architecture and actual controls](docs/architecture.md), [model methodology](docs/methodology.md), [deployment/rollback guide](docs/deployment.md) and [verification report](docs/verification.md).
 
 ## Troubleshooting
 
 - **Node version error:** Next requires a modern runtime. `node --version` should be 24.x for this project. On the original workstation, `PATH=/usr/local/bin:$PATH npm …` selects it.
 - **Docker daemon unavailable:** start Docker Desktop, then `docker info`. Native SQLite mode is available without Docker.
 - **Port already in use:** stop your old process or change web/API ports, `API_INTERNAL_URL` and `PUBLIC_ORIGIN` together. Tests need 3100/8100.
+- **Connection interrupted:** keep the preview terminal running and click **Try again** on All matches. Open match, homepage and performance lists also recover on their next successful one-minute refresh; a temporary failure no longer leaves an old error on screen.
 - **Empty live results:** inspect `/admin`: credentials, retained-data approval, provider quota, identity mapping, requested line, season entitlement and minimum sample size can all prevent publication.
 - **No demo EV results:** source prices are older than ten minutes; this is expected, not fixed by page refresh. Disable EV/fresh-only filtering to inspect stale records.
 - **CSRF failure:** use exactly `PUBLIC_ORIGIN` in the browser. `localhost` and `127.0.0.1` are different origins. Cookies must be Secure only on HTTPS.

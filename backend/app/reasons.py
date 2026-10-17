@@ -5,6 +5,23 @@ import math
 
 def pick_reason(prediction, market, outcome, probability, home, away, alternatives):
     factors = prediction.factors
+    if factors.get("basis") == "market":
+        labels = {
+            "home": home + " to win",
+            "away": away + " to win",
+            "draw": "a draw",
+            "1x": home + " or draw",
+            "x2": away + " or draw",
+            "12": "either team to win",
+        }
+        favored = probability >= max(alternatives.values()) - 1e-10
+        return {
+            "summary": f"{factors['bookmaker']}'s match-result prices favor {labels[max(alternatives, key=alternatives.get)]}. After allowing for the sportsbook margin, {labels[outcome]} has a market-based estimate of {probability:.0%}.",
+            "heading": "Why this pick",
+            "signals": [{"label": "Basis", "value": "Current sportsbook prices"}],
+            "model_favors": favored,
+            "caution": "This is a market-based estimate. Verified competition history is not available for an independent statistical assessment.",
+        }
     h, a = factors["home_rate"], factors["away_rate"]
     leading = max(alternatives, key=alternatives.get)
     favors = probability >= max(alternatives.values()) - 1e-10

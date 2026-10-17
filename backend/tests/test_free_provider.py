@@ -9,7 +9,7 @@ from app.crests import safe_crest, team_logo
 from app.db import Base, now, utc
 from app.ingestion import ingest, upsert_fixtures
 from app.leagues import LEAGUES
-from app.models import Fixture, IngestionRun, Team
+from app.models import Fixture, IngestionRun, Quote, QuoteObservation, Team
 from app.providers import (
     FOOTBALL_DATA_CODES,
     DemoFootball,
@@ -140,7 +140,9 @@ def test_free_identity_and_first_observed_history_are_separate(empty_db, monkeyp
     live = next(f for f in fixtures if f.mode == "live")
     assert live.provider_id.startswith("football-data:")
     assert utc(live.result_available_at) == fetched
-    assert team_logo(empty_db.get(Team, live.home_id)) == record["home"]["crest"]
+    team = empty_db.get(Team, live.home_id)
+    assert team.crest_url == record["home"]["crest"]
+    assert team_logo(team) == "/clubs/football-data-team-57.png"
 
 
 def test_monthly_and_minute_limits_stop_before_network(empty_db):
@@ -157,7 +159,7 @@ def test_monthly_and_minute_limits_stop_before_network(empty_db):
         ProviderClient(empty_db, "minute", 10, minute_budget=1).get("https://unused.invalid", {})
 
 
-def test_daily_recorded_prices_expire_without_becoming_fresh(monkeypatch):
+def test_three_day_recorded_prices_expire_without_becoming_fresh(monkeypatch):
     from app.research import recorded_price_usable
 
     anchor = now()
@@ -168,15 +170,15 @@ def test_daily_recorded_prices_expire_without_becoming_fresh(monkeypatch):
         "source_updated_at": anchor - timedelta(hours=2),
         "fetched_at": anchor - timedelta(hours=1),
     }
-    monkeypatch.setattr(settings, "poll_seconds", 86400)
+    monkeypatch.setattr(settings, "odds_poll_seconds", 259200)
     assert recorded_price_usable(row) and row["stale"]
-    row["fetched_at"] = anchor - timedelta(hours=25)
+    row["fetched_at"] = anchor - timedelta(hours=73)
     assert not recorded_price_usable(row)
     row["fetched_at"] = anchor - timedelta(hours=1)
     row["source_updated_at"] = None
     assert not recorded_price_usable(row)
     row["source_updated_at"] = anchor - timedelta(hours=2)
-    monkeypatch.setattr(settings, "poll_seconds", 14400)
+    monkeypatch.setattr(settings, "odds_poll_seconds", 14400)
     assert not recorded_price_usable(row)
 
 
@@ -248,12 +250,74 @@ def test_daily_shortlist_retains_original_prices_when_they_age(empty_db, monkeyp
     monkeypatch.setattr(settings, "live_retention_approved", True)
     monkeypatch.setattr(FootballData, "fixtures", lambda self: records)
     monkeypatch.setattr(TheOddsAPI, "odds", lambda self: events)
+    monkeypatch.setattr(TheOddsAPI, "european_events", lambda self: [])
+    monkeypatch.setattr(settings, "odds_bookmaker_key", "demo-exchange")
     ingest(empty_db)
     before = recommendation_rows(empty_db, upcoming=True)
-    assert len(before) == 3
+    assert before
+    from zoneinfo import ZoneInfo
+
+    assert (
+        len({row["kickoff"].astimezone(ZoneInfo("Europe/Belgrade")).date() for row in before}) == 1
+    )
     monkeypatch.setattr("app.research.now", lambda: anchor + timedelta(minutes=30))
     after = recommendation_rows(empty_db, upcoming=True)
     assert [r["id"] for r in after] == [r["id"] for r in before]
     assert all(r["stale"] for r in after)
     publish_recommendations(empty_db)
     assert len(recommendation_rows(empty_db)) == len(before)
+
+
+def test_slow_live_ingestion_observes_prices_at_receipt_not_job_start(empty_db, monkeypatch):
+    from app.matchday import matchday
+
+    anchor = now()
+    clock = [anchor]
+    records = DemoFootball(anchor).fixtures()
+    monkeypatch.setattr(settings, "app_data_mode", "live")
+    monkeypatch.setattr(settings, "football_provider", "football-data")
+    monkeypatch.setattr(settings, "live_retention_approved", True)
+    monkeypatch.setattr(settings, "odds_bookmaker_key", "demo-exchange")
+    for module in ("ingestion", "research", "matchday", "picks"):
+        monkeypatch.setattr(f"app.{module}.now", lambda: clock[0])
+
+    def fixtures(self):
+        clock[0] += timedelta(minutes=90)
+        return records
+
+    def odds(self):
+        clock[0] += timedelta(minutes=2)
+        return DemoOdds(records, clock[0]).odds()
+
+    monkeypatch.setattr(FootballData, "fixtures", fixtures)
+    monkeypatch.setattr(TheOddsAPI, "european_events", lambda self: [])
+    monkeypatch.setattr(TheOddsAPI, "odds", odds)
+    ingest(empty_db)
+
+    quote = empty_db.scalar(select(Quote))
+    assert quote is not None
+    assert utc(quote.fetched_at) == clock[0]
+    assert utc(quote.source_updated_at) > anchor + timedelta(minutes=1)
+    observations = list(empty_db.scalars(select(QuoteObservation)))
+    assert observations and all(utc(row.observed_at) == clock[0] for row in observations)
+    sweep = empty_db.scalar(
+        select(IngestionRun).where(IngestionRun.provider.startswith("odds-refresh:"))
+    )
+    assert utc(sweep.created_at) == clock[0]
+    assert matchday(team="", period="week", market="all", db=empty_db)["items"]
+
+
+def test_failed_price_recovery_does_not_record_a_successful_sweep(empty_db, monkeypatch):
+    from app.ingestion import refresh_odds
+
+    monkeypatch.setattr(settings, "app_data_mode", "live")
+    monkeypatch.setattr(settings, "live_retention_approved", True)
+
+    def unavailable(self):
+        raise ProviderUnavailable("Provider timeout")
+
+    monkeypatch.setattr(TheOddsAPI, "odds", unavailable)
+    with pytest.raises(ProviderUnavailable, match="timeout"):
+        refresh_odds(empty_db)
+    assert empty_db.scalar(select(IngestionRun)) is None
+    assert empty_db.scalar(select(QuoteObservation)) is None

@@ -3209,4 +3209,115 @@ footer p {
     font-size: 8px;
   }
 }
-.sort-select{font-size:11px;white-space:nowrap}@media(max-width:700px){.sort-select{font-size:9px}}
+.sort-select {
+  font-size: 11px;
+  white-space: nowrap;
+}
+@media (max-width: 700px) {
+  .sort-select {
+    font-size: 9px;
+  }
+}
+
+.analyst-section {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 48px;
+  align-items: start;
+}
+.analyst-copy p {
+  max-width: 380px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 20px 0;
+}
+.analyst-card {
+  padding: 28px;
+}
+.analyst-card form {
+  display: grid;
+  gap: 12px;
+}
+.analyst-card label {
+  font-size: 13px;
+  font-weight: 600;
+}
+.analyst-card select,
+.analyst-card textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: white;
+  color: inherit;
+  font: inherit;
+}
+.analyst-card textarea {
+  resize: vertical;
+}
+.analyst-prompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 6px;
+}
+.analyst-prompts button {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 7px 10px;
+  background: var(--bg);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.analyst-card .button {
+  justify-self: start;
+}
+.analyst-answer {
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+  padding-top: 20px;
+}
+.analyst-answer h3 {
+  margin: 14px 0 10px;
+}
+.analyst-answer p {
+  white-space: pre-line;
+  line-height: 1.7;
+}
+.analyst-answer small {
+  display: block;
+  color: var(--muted);
+  margin-top: 16px;
+}
+@media (max-width: 760px) {
+  .analyst-section {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .analyst-card {
+    padding: 20px;
+  }
+}
+
+.goal-line-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.goal-line-control select {
+  padding: 9px 30px 9px 12px;
+  border: 1px solid var(--border);
+  background: white;
+  border-radius: 8px;
+  color: var(--text);
+}
+
+.fixture-outcomes { display: flex; flex-direction: column; gap: 8px; }
+.fixture-line { display: flex; gap: 6px; width: 100%; }
+.fixture-line .outcome { flex: 1; min-width: 0; }
+.fixture-outcomes.all-goal-lines { max-height: 320px; overflow-y: auto; padding-right: 3px; }

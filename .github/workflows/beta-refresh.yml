@@ -1,0 +1,67 @@
+name: Beta data refresh
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
+permissions:
+  contents: read
+concurrency:
+  group: sports-easy-beta-refresh
+  cancel-in-progress: false
+jobs:
+  refresh:
+    if: vars.ENABLE_BETA_REFRESH == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: beta
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r backend/requirements.txt
+      - name: Validate and refresh beta data
+        working-directory: backend
+        env:
+          APP_ENV: production
+          APP_DATA_MODE: live
+          COOKIE_SECURE: 'true'
+          DATABASE_URL: ${{ secrets.BETA_DATABASE_URL }}
+          PUBLIC_ORIGIN: ${{ vars.BETA_PUBLIC_ORIGIN }}
+          SESSION_SECRET: ${{ secrets.BETA_SESSION_SECRET }}
+          FOOTBALL_PROVIDER: football-data
+          FOOTBALL_DATA_KEY: ${{ secrets.BETA_FOOTBALL_DATA_KEY }}
+          API_FOOTBALL_KEY: ${{ secrets.BETA_API_FOOTBALL_KEY }}
+          ODDS_API_KEY: ${{ secrets.BETA_ODDS_API_KEY }}
+          LIVE_RETENTION_APPROVED: ${{ vars.BETA_RETENTION_APPROVED || 'false' }}
+          OPERATOR_NAME: ${{ vars.BETA_OPERATOR_NAME }}
+          SUPPORT_EMAIL: ${{ vars.BETA_SUPPORT_EMAIL }}
+          SMTP_HOST: ${{ vars.BETA_SMTP_HOST }}
+          SMTP_PORT: '587'
+          SMTP_USER: ${{ secrets.BETA_SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.BETA_SMTP_PASSWORD }}
+          SMTP_FROM: ${{ vars.BETA_SMTP_FROM }}
+          SMTP_STARTTLS: 'true'
+          POLL_SECONDS: '14400'
+          ODDS_POLL_SECONDS: '259200'
+          ODDS_DAILY_BUDGET: '64'
+          ODDS_EVENT_DAILY_BUDGET: '32'
+          ODDS_MONTHLY_BUDGET: '450'
+        run: |
+          python - <<'PY'
+          import os
+          required = ['DATABASE_URL', 'PUBLIC_ORIGIN', 'SESSION_SECRET', 'FOOTBALL_DATA_KEY', 'ODDS_API_KEY', 'SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD', 'SMTP_FROM', 'OPERATOR_NAME', 'SUPPORT_EMAIL']
+          missing = [name for name in required if not os.environ.get(name)]
+          if missing:
+              raise SystemExit('Missing beta settings: ' + ', '.join(missing))
+          from pathlib import Path
+          import sys
+          sys.path.insert(0, str(Path.cwd().parent))
+          from scripts.check_beta import blockers
+          missing = blockers(os.environ)
+          if missing:
+              raise SystemExit('Incomplete beta configuration: ' + ', '.join(missing))
+          PY
+          python -m app.cli refresh

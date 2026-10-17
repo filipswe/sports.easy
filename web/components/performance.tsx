@@ -41,14 +41,23 @@ export function Performance() {
   useEffect(() => {
     let active = true;
     setError("");
-    api<Performance>("/performance?page=" + page)
-      .then((r) => {
-        if (active) setData(r);
-      })
-      .catch((e) => {
-        if (active) setError(e.message);
-      });
+    const load = () =>
+      api<Performance>("/performance?page=" + page)
+        .then((r) => {
+          if (active) {
+            setData(r);
+            setError("");
+          }
+        })
+        .catch((e) => {
+          if (active) setError(e.message);
+        });
+    load();
+    const interval = window.setInterval(() => {
+      if (!document.hidden) load();
+    }, 60000);
     return () => {
+      window.clearInterval(interval);
       active = false;
     };
   }, [page]);
@@ -143,7 +152,7 @@ export function Performance() {
                     <th>Match</th>
                     <th>Our pick</th>
                     <th>Odds</th>
-                    <th>Model chance</th>
+                    <th>Estimated chance</th>
                     <th>Result</th>
                   </tr>
                 </thead>

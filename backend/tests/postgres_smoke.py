@@ -1,7 +1,13 @@
 """Run explicitly against a migrated, disposable PostgreSQL database, never production."""
 
-from app.db import SessionLocal, engine
-from app.models import Fixture, Job, Publication, Recommendation
+from concurrent.futures import ThreadPoolExecutor
+
+from app import worker
+from app.chat import reserve_chat
+from app.db import SessionLocal, engine, now
+from app.models import Fixture, Job, Publication, QuoteObservation, Recommendation
+from app.price_refresh import provider_lock
+from app.rate_limits import reserve_request
 from app.worker import tick
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import DBAPIError
@@ -9,12 +15,16 @@ from sqlalchemy.exc import DBAPIError
 assert engine.dialect.name == "postgresql"
 with SessionLocal() as db:
     assert db.scalar(select(func.count()).select_from(Fixture)) == 1380
-    for cls, table in [(Publication, "publications"), (Recommendation, "recommendations")]:
+    for cls, table, column in [
+        (Publication, "publications", "created_at"),
+        (Recommendation, "recommendations", "created_at"),
+        (QuoteObservation, "quote_observations", "observed_at"),
+    ]:
         record = db.scalar(select(cls))
         assert record
         try:
             db.execute(
-                text(f"UPDATE {table} SET created_at = now() WHERE id = :id"), {"id": record.id}
+                text(f"UPDATE {table} SET {column} = now() WHERE id = :id"), {"id": record.id}
             )
             db.commit()
         except DBAPIError as error:
@@ -26,12 +36,65 @@ with engine.connect() as first, engine.connect() as second:
     assert first.scalar(text("SELECT pg_try_advisory_lock(719482)"))
     assert not second.scalar(text("SELECT pg_try_advisory_lock(719482)"))
     first.execute(text("SELECT pg_advisory_unlock(719482)"))
-tick()
+
+
+def assert_lock_has_no_open_transaction(db):
+    assert (
+        db.scalar(
+            text(
+                "SELECT a.xact_start IS NULL FROM pg_locks l "
+                "JOIN pg_stat_activity a ON a.pid=l.pid "
+                "WHERE l.locktype='advisory' AND l.objid=719482 AND l.granted "
+                "AND a.pid<>pg_backend_pid()"
+            )
+        )
+        is True
+    )
+
+
+with SessionLocal() as db:
+    with provider_lock(db) as acquired:
+        assert acquired
+        assert_lock_has_no_open_transaction(db)
+        assert not db.scalar(text("SELECT pg_try_advisory_lock(719482)"))
+
+original_ingest = worker.ingest
+
+
+def checked_ingest(db):
+    assert_lock_has_no_open_transaction(db)
+    return original_ingest(db)
+
+
+worker.ingest = checked_ingest
+try:
+    tick()
+finally:
+    worker.ingest = original_ingest
 with SessionLocal() as db:
     count = db.scalar(select(func.count()).select_from(Job))
 tick()
 with SessionLocal() as db:
     assert db.scalar(select(func.count()).select_from(Job)) == count
+at = now()
+
+
+def concurrent_reservation(actor):
+    with SessionLocal() as db:
+        return reserve_chat(db, str(actor), at)
+
+
+with ThreadPoolExecutor(max_workers=6) as pool:
+    assert sum(pool.map(concurrent_reservation, range(6))) == 1
+
+
+def concurrent_request(_):
+    with SessionLocal() as db:
+        return reserve_request(db, "shared-client", "auth-mutation", at, 3)
+
+
+with ThreadPoolExecutor(max_workers=6) as pool:
+    assert sum(pool.map(concurrent_request, range(12))) == 3
 print(
-    "PostgreSQL: migrations, persisted seed, immutable SQL trigger, advisory lock and duplicate-job checks passed"
+    "PostgreSQL: migrations, persisted seed, immutable SQL triggers, advisory lock outside transactions, duplicate-job and concurrent chat/request quota checks passed"
 )
