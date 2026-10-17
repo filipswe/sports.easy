@@ -321,16 +321,20 @@ def ingest(db):
     db.commit()
     settle(db)
     db.commit()
-    refresh = mode == "live" and odds_refresh_due(db, fetched)
+    refresh = mode == "live" and odds_refresh_due(db)
+    odds_fetched = fetched
     if refresh:
         events = TheOddsAPI(db).odds()
-    rejected = store_odds(db, events, fetched=fetched, observed=True)
+        # Model fitting and provider calls can outlast the initial fixture fetch.
+        # Validate/observe prices when received, retaining their upstream timestamps.
+        odds_fetched = now()
+    rejected = store_odds(db, events, fetched=odds_fetched, observed=True)
     if refresh:
         db.add(
             IngestionRun(
                 provider=f"odds-refresh:{settings.odds_region}:{settings.odds_bookmaker_key}",
                 status="complete",
-                created_at=fetched,
+                created_at=odds_fetched,
                 detail={"events": len(events)},
             )
         )

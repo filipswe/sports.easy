@@ -9,7 +9,7 @@ from app.crests import safe_crest, team_logo
 from app.db import Base, now, utc
 from app.ingestion import ingest, upsert_fixtures
 from app.leagues import LEAGUES
-from app.models import Fixture, IngestionRun, Team
+from app.models import Fixture, IngestionRun, Quote, QuoteObservation, Team
 from app.providers import (
     FOOTBALL_DATA_CODES,
     DemoFootball,
@@ -266,3 +266,42 @@ def test_daily_shortlist_retains_original_prices_when_they_age(empty_db, monkeyp
     assert all(r["stale"] for r in after)
     publish_recommendations(empty_db)
     assert len(recommendation_rows(empty_db)) == len(before)
+
+
+def test_slow_live_ingestion_observes_prices_at_receipt_not_job_start(empty_db, monkeypatch):
+    from app.matchday import matchday
+
+    anchor = now()
+    clock = [anchor]
+    records = DemoFootball(anchor).fixtures()
+    monkeypatch.setattr(settings, "app_data_mode", "live")
+    monkeypatch.setattr(settings, "football_provider", "football-data")
+    monkeypatch.setattr(settings, "live_retention_approved", True)
+    monkeypatch.setattr(settings, "odds_bookmaker_key", "demo-exchange")
+    for module in ("ingestion", "research", "matchday", "picks"):
+        monkeypatch.setattr(f"app.{module}.now", lambda: clock[0])
+
+    def fixtures(self):
+        clock[0] += timedelta(minutes=90)
+        return records
+
+    def odds(self):
+        clock[0] += timedelta(minutes=2)
+        return DemoOdds(records, clock[0]).odds()
+
+    monkeypatch.setattr(FootballData, "fixtures", fixtures)
+    monkeypatch.setattr(TheOddsAPI, "european_events", lambda self: [])
+    monkeypatch.setattr(TheOddsAPI, "odds", odds)
+    ingest(empty_db)
+
+    quote = empty_db.scalar(select(Quote))
+    assert quote is not None
+    assert utc(quote.fetched_at) == clock[0]
+    assert utc(quote.source_updated_at) > anchor + timedelta(minutes=1)
+    observations = list(empty_db.scalars(select(QuoteObservation)))
+    assert observations and all(utc(row.observed_at) == clock[0] for row in observations)
+    sweep = empty_db.scalar(
+        select(IngestionRun).where(IngestionRun.provider.startswith("odds-refresh:"))
+    )
+    assert utc(sweep.created_at) == clock[0]
+    assert matchday(team="", period="week", market="all", db=empty_db)["items"]
